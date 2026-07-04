@@ -485,6 +485,8 @@ body {
   line-height: 22px;
 }
 .qpm-leg-desc { color: var(--text-sub); font-size: 12.5px; }
+.fig-wrap { overflow-x: auto; }
+.fig-wrap svg { width: 100%; max-width: 640px; height: auto; display: block; }
 .qpm-hot { cursor: pointer; fill: transparent; stroke: transparent; }
 .qpm-hot:hover { stroke: var(--yellow); stroke-width: 3; fill: rgba(255, 213, 0, 0.1); }
 .flash-target { animation: flashbg 1.4s ease 1; border-radius: var(--radius); }
