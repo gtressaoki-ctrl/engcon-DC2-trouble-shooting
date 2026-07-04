@@ -10,6 +10,14 @@ const $search = document.getElementById("search-input");
 
 const ALARM_BY_ID = new Map(ALARMS.map((a) => [a.id, a]));
 const CAT_BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
+const MODULE_BY_ID = new Map(MODULE_PAGES.map((m) => [m.id, m]));
+
+// モジュールページの全エントリを検索用にフラット化
+const MODULE_INDEX = MODULE_PAGES.flatMap((page) =>
+  page.groups.flatMap((g) =>
+    g.entries.map((e) => ({ page, group: g.heading, entry: e }))
+  )
+);
 
 /* ---------- ユーティリティ ---------- */
 
@@ -70,6 +78,17 @@ function searchAlarms(query) {
   });
 }
 
+// モジュールページ（セーフステート・QSC・LED）内の検索
+function searchModules(query) {
+  const q = normalize(query);
+  if (!q || /^\d+$/.test(q)) return [];
+  const words = q.split(/\s+/);
+  return MODULE_INDEX.filter((m) => {
+    const hay = normalize(`${m.page.name} ${m.group} ${m.entry.badge} ${m.entry.title} ${m.entry.desc} ${m.entry.action || ""}`);
+    return words.every((w) => hay.includes(w));
+  });
+}
+
 /* ---------- 描画：ホーム ---------- */
 
 function renderHome() {
@@ -99,6 +118,17 @@ function renderHome() {
     <h2 class="section-title">カテゴリから探す</h2>
     <div class="cat-grid">${tiles}</div>
     <button class="all-link" data-nav="#all">全アラーム一覧を見る（${ALARMS.length} 件）</button>
+    <h2 class="section-title">QSC・その他モジュールのアラーム</h2>
+    <div class="cat-grid">
+      ${MODULE_PAGES.map((m) => `
+        <button class="cat-tile" data-nav="#mod/${m.id}">
+          <span class="cat-icon">${m.icon}</span>
+          <span>
+            <span class="cat-name">${esc(m.name)}</span><br>
+            <span class="cat-count">${esc(m.short)}</span>
+          </span>
+        </button>`).join("")}
+    </div>
   `;
 
   const form = document.getElementById("id-form");
@@ -133,17 +163,74 @@ function alarmRow(a) {
     </button>`;
 }
 
-function renderList(items, title) {
+function renderList(items, title, moduleHits) {
   const rows = items.map(alarmRow).join("");
+  let moduleHtml = "";
+  if (moduleHits && moduleHits.length) {
+    moduleHtml = `
+      <h2 class="section-title" style="margin-top:24px">QSC・その他モジュールでの該当（${moduleHits.length} 件）</h2>
+      <div class="alarm-list">
+        ${moduleHits.map((m) => `
+          <button class="alarm-row" data-nav="#mod/${m.page.id}">
+            <span class="row-id mod-id">${esc(m.entry.badge)}</span>
+            <span class="row-main">
+              <span class="row-title">${esc(m.entry.title)}</span><br>
+              <span class="row-code">${m.page.icon} ${esc(m.page.name)} ─ ${esc(m.group)}</span>
+            </span>
+          </button>`).join("")}
+      </div>`;
+  }
+  const total = items.length + (moduleHits ? moduleHits.length : 0);
   $app.innerHTML = `
     <div class="list-head">
       <h1>${esc(title)}</h1>
-      <span class="result-count">${items.length} 件</span>
+      <span class="result-count">${total} 件</span>
     </div>
-    ${rows || `<div class="empty-note">該当するアラームが見つかりませんでした。<br>エラー番号（0〜172）またはキーワードを変えてお試しください。</div>`}
+    ${rows ? `<div class="alarm-list">${rows}</div>` : ""}
+    ${!total ? `<div class="empty-note">該当するアラームが見つかりませんでした。<br>エラー番号（0〜172）またはキーワードを変えてお試しください。</div>` : ""}
+    ${moduleHtml}
   `;
   $app.querySelectorAll(".alarm-row").forEach((el) => {
     el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+  });
+}
+
+/* ---------- 描画：モジュールページ（セーフステート・QSC・LED） ---------- */
+
+function renderModulePage(page) {
+  const groups = page.groups.map((g) => `
+    <div class="detail-section">
+      <h2>${esc(g.heading)}</h2>
+      <div class="mod-list">
+        ${g.entries.map((e) => `
+          <div class="mod-entry">
+            <div class="mod-head">
+              <span class="mod-badge">${esc(e.badge)}</span>
+              <span class="mod-title">${esc(e.title)}</span>
+            </div>
+            <p class="mod-desc">${esc(e.desc)}</p>
+            ${e.action ? `<div class="mod-action"><strong>対処：</strong>${esc(e.action)}</div>` : ""}
+          </div>`).join("")}
+      </div>
+    </div>`).join("");
+
+  $app.innerHTML = `
+    <button class="back-btn" id="back-btn">← 戻る</button>
+    <div class="detail-header">
+      <div class="detail-id"><small>モジュール</small><span style="font-size:20px">${page.icon}</span></div>
+      <div class="detail-titles">
+        <h1>${esc(page.name)}</h1>
+        <div class="detail-code">${esc(page.short)}</div>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-section"><h2>概要</h2><p>${esc(page.intro)}</p></div>
+      ${groups}
+    </div>
+  `;
+  document.getElementById("back-btn").addEventListener("click", () => {
+    if (history.length > 1) history.back();
+    else location.hash = "#home";
   });
 }
 
@@ -270,10 +357,14 @@ function route() {
       return;
     }
   }
+  if (hash.startsWith("#mod/")) {
+    const page = MODULE_BY_ID.get(hash.slice(5));
+    if (page) { renderModulePage(page); return; }
+  }
   if (hash.startsWith("#search/")) {
     const q = hash.slice(8);
     if ($search.value !== q) $search.value = q;
-    renderList(searchAlarms(q), `「${q}」の検索結果`);
+    renderList(searchAlarms(q), `「${q}」の検索結果`, searchModules(q));
     return;
   }
   if (hash === "#all") {

@@ -419,6 +419,39 @@ body {
   font-size: 12px;
 }
 
+/* ---------- モジュールページ（セーフステート・QSC・LED） ---------- */
+.mod-list { display: flex; flex-direction: column; gap: 10px; }
+.mod-entry {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: #fafaf8;
+}
+.mod-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mod-badge {
+  flex: none;
+  min-width: 52px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--black);
+  color: var(--yellow);
+  font-weight: 800;
+  font-size: 13px;
+  text-align: center;
+  white-space: nowrap;
+}
+.mod-title { font-weight: 700; font-size: 14.5px; }
+.mod-desc { margin: 8px 0 0; font-size: 13.5px; }
+.mod-action {
+  margin-top: 8px;
+  background: #fffbe8;
+  border: 1px solid var(--yellow-dark);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+}
+.row-id.mod-id { font-size: 12px; min-width: 56px; }
+
 /* ---------- フッター ---------- */
 .app-footer {
   max-width: 960px;
