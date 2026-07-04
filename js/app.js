@@ -195,11 +195,129 @@ function renderList(items, title, moduleHits) {
   });
 }
 
+/* ---------- QPM パネル図（実機を模した SVG） ---------- */
+
+function qpmPanelHtml() {
+  // 南京錠アイコン（cx, cy 中心）閉＝シャックルが本体の真上、開＝右にずれる
+  const lock = (cx, cy, open) => `
+    <rect x="${cx - 13}" y="${cy - 2}" width="26" height="17" rx="3" fill="#fff"/>
+    <path d="M ${open ? cx - 2 : cx - 8},${cy - 2} v-6 a8,8 0 0 1 16,0 v6"
+          fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>`;
+  // ヒッチアイコン（バー＋ピン2本）。rot=true でローテータ円を追加
+  const hitch = (cx, cy, rot) => `
+    <rect x="${cx - 14}" y="${cy - 10}" width="28" height="8" rx="2" fill="#e6e6e6"/>
+    <circle cx="${cx - 8}" cy="${cy + 4}" r="5" fill="#e6e6e6"/>
+    <circle cx="${cx + 8}" cy="${cy + 4}" r="5" fill="#e6e6e6"/>
+    ${rot ? `<circle cx="${cx}" cy="${cy + 16}" r="6" fill="none" stroke="#e6e6e6" stroke-width="2.5"/>` : ""}`;
+  const led = (cx, cy) => `<circle cx="${cx}" cy="${cy}" r="6" fill="#222" stroke="#9a9a9a" stroke-width="2"/>`;
+  const badge = (cx, cy, n) => `
+    <circle cx="${cx}" cy="${cy}" r="11" fill="#ffd500"/>
+    <text x="${cx}" y="${cy + 4.5}" text-anchor="middle" font-size="13" font-weight="800" fill="#111">${n}</text>`;
+
+  const svg = `
+  <svg viewBox="0 0 360 700" xmlns="http://www.w3.org/2000/svg" role="img"
+       aria-label="QPM パネルの配置図">
+    <!-- 本体 -->
+    <rect x="40" y="8" width="280" height="684" rx="38" fill="#262626" stroke="#141414" stroke-width="3"/>
+    <rect x="58" y="70" width="244" height="440" rx="12" fill="#0d0d0d"/>
+    <!-- engcon ロゴ -->
+    <rect x="72" y="20" width="216" height="38" rx="8" fill="#ffd500"/>
+    <text x="180" y="46" text-anchor="middle" font-size="24" font-weight="800" font-style="italic" fill="#111" font-family="Arial, sans-serif">engcon</text>
+
+    <!-- ① マシンヒッチ 開／閉ボタン（左列） -->
+    <rect x="80" y="100" width="76" height="62" rx="12" fill="#1a1a1a" stroke="#b5b5b5" stroke-width="3"/>
+    ${lock(118, 131, true)}
+    <rect x="80" y="180" width="76" height="62" rx="12" fill="#1a1a1a" stroke="#b5b5b5" stroke-width="3"/>
+    ${lock(118, 211, false)}
+    <!-- ② チルトローテータヒッチ 開／閉ボタン（右列・少し下にずれる） -->
+    <rect x="196" y="114" width="76" height="62" rx="12" fill="#1a1a1a" stroke="#b5b5b5" stroke-width="3"/>
+    ${lock(234, 145, true)}
+    <rect x="196" y="194" width="76" height="62" rx="12" fill="#1a1a1a" stroke="#b5b5b5" stroke-width="3"/>
+    ${lock(234, 225, false)}
+
+    <!-- ③ マシンヒッチ アイコン＋左右LED（バケット軸位置インジケータ） -->
+    ${led(84, 292)}${hitch(118, 288, false)}${led(152, 292)}
+
+    <!-- ④ 接地圧ボタン（丸に下向き矢印＋地面） -->
+    <circle cx="236" cy="292" r="30" fill="none" stroke="#fff" stroke-width="3"/>
+    <line x1="236" y1="274" x2="236" y2="296" stroke="#fff" stroke-width="4"/>
+    <polygon points="236,306 227,294 245,294" fill="#fff"/>
+    <line x1="221" y1="312" x2="251" y2="312" stroke="#fff" stroke-width="3.5"/>
+
+    <!-- ⑤ 十字矢印ボタン（スイング／高さ制限） -->
+    <circle cx="118" cy="390" r="32" fill="none" stroke="#fff" stroke-width="3"/>
+    <line x1="107" y1="379" x2="129" y2="401" stroke="#fff" stroke-width="4"/>
+    <line x1="129" y1="379" x2="107" y2="401" stroke="#fff" stroke-width="4"/>
+    <polygon points="101,373 112,376 104,384" fill="#fff"/>
+    <polygon points="135,373 132,384 124,376" fill="#fff"/>
+    <polygon points="101,407 104,396 112,404" fill="#fff"/>
+    <polygon points="135,407 124,404 132,396" fill="#fff"/>
+
+    <!-- ⑥ 警告三角（アラームインジケータ） -->
+    <path d="M196,398 L176,432 L216,432 Z" fill="none" stroke="#e03131" stroke-width="3.5" stroke-linejoin="round"/>
+    <rect x="194.4" y="408" width="3.2" height="12" rx="1.5" fill="#e03131"/>
+    <circle cx="196" cy="426" r="2.2" fill="#e03131"/>
+
+    <!-- ③' チルトローテータヒッチ アイコン＋左右LED -->
+    ${led(202, 462)}${hitch(236, 456, true)}${led(270, 462)}
+
+    <!-- ⑦ スライドカバー -->
+    <rect x="54" y="500" width="252" height="176" rx="22" fill="#2f2f2f" stroke="#191919" stroke-width="3"/>
+    <rect x="120" y="524" width="120" height="10" rx="5" fill="#242424"/>
+    <rect x="120" y="548" width="120" height="10" rx="5" fill="#242424"/>
+    <text x="180" y="640" text-anchor="middle" font-size="17" font-weight="700" fill="#4a4a4a" font-family="Arial, sans-serif">QSC</text>
+
+    <!-- 番号バッジ -->
+    ${badge(62, 131, "1")}
+    ${badge(298, 250, "2")}
+    ${badge(62, 292, "3")}
+    ${badge(298, 292, "4")}
+    ${badge(62, 390, "5")}
+    ${badge(240, 415, "6")}
+    ${badge(298, 462, "3")}
+    ${badge(298, 540, "7")}
+
+    <!-- クリック領域（ホットスポット） -->
+    <rect class="qpm-hot" data-jump="g2" x="76" y="96" width="84" height="150" rx="12"><title>マシンヒッチ 開／閉ボタン</title></rect>
+    <rect class="qpm-hot" data-jump="g2" x="192" y="110" width="84" height="150" rx="12"><title>チルトローテータヒッチ 開／閉ボタン</title></rect>
+    <rect class="qpm-hot" data-jump="g3" x="74" y="272" width="90" height="40" rx="8"><title>ヒッチ状態インジケータ（左右LED）</title></rect>
+    <circle class="qpm-hot" data-jump="g1" cx="236" cy="292" r="35"><title>接地圧ボタン</title></circle>
+    <circle class="qpm-hot" data-jump="g0" cx="118" cy="390" r="37"><title>十字矢印（スイング／高さ制限）ボタン</title></circle>
+    <rect class="qpm-hot" data-jump="codes" x="170" y="392" width="52" height="46" rx="8"><title>警告三角（エラーコード表示）</title></rect>
+    <rect class="qpm-hot" data-jump="g3" x="192" y="440" width="90" height="42" rx="8"><title>ヒッチ状態インジケータ（左右LED）</title></rect>
+    <rect class="qpm-hot" data-jump="cover" x="54" y="500" width="252" height="130" rx="22"><title>スライドカバー</title></rect>
+  </svg>`;
+
+  const legend = [
+    { n: "1", jump: "g2", title: "マシンヒッチ 開🔓／閉🔒 ボタン（左列）", desc: "マシン側クイックヒッチロックの開閉。ランプの点滅は下の「選択ランプ」を参照。" },
+    { n: "2", jump: "g2", title: "チルトローテータヒッチ 開🔓／閉🔒 ボタン（右列）", desc: "チルトローテータ側クイックヒッチロックの開閉。" },
+    { n: "3", jump: "g3", title: "ヒッチ状態インジケータ（アイコン両脇の左右LED）", desc: "バケット軸位置（フックセンサー／イジェクタセンサー）の連結状態を表示。上＝マシン側、下＝チルトローテータ側。" },
+    { n: "4", jump: "g1", title: "接地圧ボタン（丸に下向き矢印）", desc: "接地圧（グラウンドコンタクト）の状態表示とテスト。" },
+    { n: "5", jump: "g0", title: "十字矢印ボタン（スイング／高さ制限）", desc: "マシン抑制（旋回・リフトのブロック）の表示と解除。設定モードの開始にも使用。" },
+    { n: "6", jump: "codes", title: "警告三角（アラームインジケータ）", desc: "点滅回数（1〜21回）でエラーコードを表示 → タップでコード表へ。" },
+    { n: "7", jump: "cover", title: "スライドカバー", desc: "使わない側のロックボタンを覆い、誤ったヒッチの開放を防ぎます。" },
+  ].map((l) => `
+    <button class="qpm-leg" data-jump="${l.jump}">
+      <span class="qpm-num">${l.n}</span>
+      <span><strong>${esc(l.title)}</strong><br><span class="qpm-leg-desc">${esc(l.desc)}</span></span>
+    </button>`).join("");
+
+  return `
+    <div class="detail-section">
+      <h2>パネルの配置図（タップで説明へジャンプ）</h2>
+      <p class="qpm-note">実機の QSC パネル（QPM）を模した配置図です。図の各部または下の凡例をタップすると、該当する説明にジャンプします。</p>
+      <div class="qpm-fig">
+        ${svg}
+        <div class="qpm-legend">${legend}</div>
+      </div>
+    </div>`;
+}
+
 /* ---------- 描画：モジュールページ（セーフステート・QSC・LED） ---------- */
 
 function renderModulePage(page) {
-  const groups = page.groups.map((g) => `
-    <div class="detail-section">
+  const groups = page.groups.map((g, gi) => `
+    <div class="detail-section" id="mg-${page.id}-${gi}">
       <h2>${esc(g.heading)}</h2>
       <div class="mod-list">
         ${g.entries.map((e) => `
@@ -225,12 +343,29 @@ function renderModulePage(page) {
     </div>
     <div class="detail-body">
       <div class="detail-section"><h2>概要</h2><p>${esc(page.intro)}</p></div>
+      ${page.id === "qpm-lamps" ? qpmPanelHtml() : ""}
       ${groups}
     </div>
   `;
   document.getElementById("back-btn").addEventListener("click", () => {
     if (history.length > 1) history.back();
     else location.hash = "#home";
+  });
+
+  // パネル図のホットスポット・凡例クリック → 該当セクションへスクロール
+  $app.querySelectorAll("[data-jump]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const jump = el.dataset.jump;
+      if (jump === "codes") { location.hash = "#mod/qpm-codes"; return; }
+      if (jump === "cover") return; // カバーは凡例の説明のみ
+      const target = document.getElementById(`mg-${page.id}-${jump.slice(1)}`);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        target.classList.remove("flash-target");
+        void target.offsetWidth; // アニメーションを再トリガー
+        target.classList.add("flash-target");
+      }
+    });
   });
 }
 

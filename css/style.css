@@ -452,6 +452,47 @@ body {
 }
 .row-id.mod-id { font-size: 12px; min-width: 56px; }
 
+/* QPM パネル図 */
+.qpm-note { font-size: 13px; color: var(--text-sub); margin: 0 0 10px !important; }
+.qpm-fig { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.qpm-fig svg { flex: 0 1 300px; width: 100%; max-width: 300px; height: auto; }
+.qpm-legend { flex: 1 1 260px; display: flex; flex-direction: column; gap: 7px; }
+.qpm-leg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: #fafaf8;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  color: inherit;
+}
+.qpm-leg:hover { border-color: var(--yellow-dark); background: #fffbe8; }
+.qpm-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--yellow);
+  color: #111;
+  font-weight: 800;
+  font-size: 13px;
+  text-align: center;
+  line-height: 22px;
+}
+.qpm-leg-desc { color: var(--text-sub); font-size: 12.5px; }
+.qpm-hot { cursor: pointer; fill: transparent; stroke: transparent; }
+.qpm-hot:hover { stroke: var(--yellow); stroke-width: 3; fill: rgba(255, 213, 0, 0.1); }
+.flash-target { animation: flashbg 1.4s ease 1; border-radius: var(--radius); }
+@keyframes flashbg {
+  0% { background: #ffee9c; }
+  100% { background: transparent; }
+}
+
 /* ---------- フッター ---------- */
 .app-footer {
   max-width: 960px;
