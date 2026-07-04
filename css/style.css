@@ -513,3 +513,11 @@ body {
   .detail-header { flex-direction: column; gap: 10px; }
   .cat-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* 取付説明書の原図（img/ に画像を置くと表示される） */
+.fig-img {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+}

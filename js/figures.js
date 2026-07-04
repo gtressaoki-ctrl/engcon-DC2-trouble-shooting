@@ -337,9 +337,18 @@ FIGURES.system = function () {
   </svg>`;
 
   return `
+    <div class="detail-section fig-orig">
+      <h2>取付説明書の概略図（マシン電気キット 8001118）</h2>
+      <p class="qpm-note">engcon 取付説明書 9000876「4.4.2. 概略図」より。実際の配線図はこちらを参照してください。</p>
+      <div class="fig-wrap">
+        <img src="img/wiring-8001118.png" class="fig-img"
+             alt="マシン電気キット 8001118 概略図（取付説明書 9000876 より）"
+             onerror="this.closest('.fig-orig').style.display='none'">
+      </div>
+    </div>
     <div class="detail-section">
-      <h2>システム構成図（マシン電気キット 8001118 の簡略図）</h2>
-      <p class="qpm-note">DC2 QSC システムの各モジュールとケーブルのつながりです。黄色のタグはケーブルの部品番号です。アラーム文の「CM-X1」「TM-X○」などは、この図の該当モジュールのコネクタを指します。</p>
+      <h2>システム構成図（簡略図）</h2>
+      <p class="qpm-note">DC2 QSC システムの各モジュールとケーブルのつながりを整理した簡略図です。黄色のタグはケーブルの部品番号です。アラーム文の「CM-X1」「TM-X○」などは、この図の該当モジュールのコネクタを指します。</p>
       <div class="fig-wrap">${svg}</div>
     </div>`;
 };
