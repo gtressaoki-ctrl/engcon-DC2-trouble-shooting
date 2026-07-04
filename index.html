@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="engcon DC2（MicroConf）アラーム Id 0〜172 の原因とトラブルシューティングを日本語で検索できる非公式リファレンス">
+  <title>DC2 アラーム トラブルシューティング</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23ffd500'/%3E%3Ctext x='16' y='23' font-size='20' font-weight='bold' font-family='Arial' text-anchor='middle' fill='%231a1a1a'%3Ee%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <a class="brand" href="#home">
+        <span class="brand-mark">e</span>
+        <span class="brand-text">
+          <strong>DC2 アラーム トラブルシューティング</strong>
+          <small>MicroConf DC2 アラーム一覧（Id 0–172）</small>
+        </span>
+      </a>
+      <div class="header-search">
+        <input id="search-input" type="search" inputmode="search"
+               placeholder="エラー番号 または キーワードで検索（例: 92、ジョイスティック、SHORT）"
+               autocomplete="off">
+      </div>
+    </div>
+  </header>
+
+  <main id="app" class="app-main" aria-live="polite"></main>
+
+  <footer class="app-footer">
+    <p>本アプリは engcon MicroConf DC2 のトラブルシューティング資料をもとにした<strong>非公式の参考ツール</strong>です。</p>
+    <p>点検・修理作業は必ず機械を安全な状態にしてから行い、判断に迷う場合は販売店・サービスにご相談ください。</p>
+  </footer>
+
+  <script src="js/alarms-data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
