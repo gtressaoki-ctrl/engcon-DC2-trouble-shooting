@@ -89,6 +89,68 @@ function searchModules(query) {
   });
 }
 
+// Q&A の検索
+function searchQA(query) {
+  const q = normalize(query);
+  if (!q || /^\d+$/.test(q)) return [];
+  const words = q.split(/\s+/);
+  return QA_ITEMS.map((item, i) => ({ item, i }))
+    .filter(({ item }) => {
+      const hay = normalize(`${item.q} ${item.a}`);
+      return words.every((w) => hay.includes(w));
+    });
+}
+
+// CM 画面の表示文字から調べる検索
+// 別名辞書（DISPLAY_ALIASES）＋通常検索＋単語ごとの部分一致で候補を集める
+function searchDisplay(query) {
+  const qn = normalize(query);
+  const notes = [];
+  const idSet = new Set();
+  const pageSet = new Set();
+
+  DISPLAY_ALIASES.forEach((alias) => {
+    if (alias.keys.some((k) => qn.includes(normalize(k)))) {
+      (alias.ids || []).forEach((id) => idSet.add(id));
+      (alias.pages || []).forEach((p) => pageSet.add(p));
+      if (alias.note) notes.push(alias.note);
+    }
+  });
+
+  // 「SAFE STATE 9」のような番号付き表記
+  const ss = qn.match(/safe ?state[:\s]*(\d+)/);
+  if (ss) {
+    const n = parseInt(ss[1], 10);
+    if (n >= 1 && n <= 8) notes.push(`SAFE STATE ${n}＝内部の不具合による安全状態です。繰り返す場合はサポートへ連絡してください。`);
+    if (n === 9 || n === 11) notes.push(`SAFE STATE ${n}＝CVP1（コントロールバルブ圧力スイッチ1）の圧力異常です。バルブ・圧力スイッチ・接続を確認してください。`);
+    if (n === 10 || n === 12) notes.push(`SAFE STATE ${n}＝CVP2（コントロールバルブ圧力スイッチ2）の圧力異常です。バルブ・圧力スイッチ・接続を確認してください。`);
+  }
+  // 「COUNTER 9」のような回数表記
+  const cnt = qn.match(/count(?:er)?[:\s]*(\d+)/);
+  if (cnt) {
+    notes.push(`COUNTER ${cnt[1]}＝このアラームが ${cnt[1]} 回発生した、という意味です（故障内容ではありません）。`);
+  }
+
+  // 通常の全文検索（全語一致）
+  searchAlarms(query).forEach((a) => idSet.add(a.id));
+
+  // ヒットが少ない場合は、単語ごとの部分一致（3文字以上、数字・一般語を除く）
+  if (idSet.size === 0) {
+    const stop = new Set(["count", "counter", "safe", "state", "the", "and", "cm", "エラー", "アラーム"]);
+    const words = qn.split(/[\s,、。\/]+/).filter((w) => w.length >= 3 && !stop.has(w) && !/^\d+$/.test(w));
+    words.forEach((w) => {
+      ALARMS.forEach((a) => {
+        const hay = normalize(`${a.code} ${a.title}`);
+        if (hay.includes(w)) idSet.add(a.id);
+      });
+    });
+  }
+
+  const alarms = [...idSet].sort((a, b) => a - b).map((id) => ALARM_BY_ID.get(id)).filter(Boolean);
+  const pages = [...pageSet].map((p) => MODULE_BY_ID.get(p)).filter(Boolean);
+  return { notes, alarms, pages };
+}
+
 /* ---------- 描画：ホーム ---------- */
 
 function renderHome() {
@@ -114,10 +176,20 @@ function renderHome() {
         <button type="submit">表示</button>
       </form>
       <div class="id-error" id="id-error"></div>
+      <div class="hero-divider"></div>
+      <h1>CM画面の表示文字から調べる</h1>
+      <p>運転室モジュール（CM）の画面に出た文字をそのまま入力してください。</p>
+      <form class="id-form display-form" id="display-form">
+        <input id="display-input" type="text"
+               placeholder="例: CONTROL VALVE ／ COUNTER 9 ／ SAFE STATE 9"
+               autocomplete="off" aria-label="CM画面の表示文字">
+        <button type="submit">調べる</button>
+      </form>
     </div>
     <h2 class="section-title">カテゴリから探す</h2>
     <div class="cat-grid">${tiles}</div>
     <button class="all-link" data-nav="#all">全アラーム一覧を見る（${ALARMS.length} 件）</button>
+    <button class="all-link qa-link" data-nav="#qa">❓ よくある質問（Q&amp;A）を見る（${QA_ITEMS.length} 件）</button>
     <h2 class="section-title">QSC・その他モジュールのアラーム</h2>
     <div class="cat-grid">
       ${MODULE_PAGES.map((m) => `
@@ -147,6 +219,76 @@ function renderHome() {
     }
     location.hash = `#alarm/${n}`;
   });
+
+  document.getElementById("display-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = document.getElementById("display-input").value.trim();
+    if (q) location.hash = `#display/${encodeURIComponent(q)}`;
+  });
+}
+
+/* ---------- 描画：CM画面表示からの検索結果 ---------- */
+
+function renderDisplayResults(query) {
+  const { notes, alarms, pages } = searchDisplay(query);
+  const notesHtml = notes.map((n) => `<div class="note-info">${esc(n)}</div>`).join("");
+  const pagesHtml = pages.length
+    ? `<h2 class="section-title" style="margin-top:24px">関連ページ</h2>
+       <div class="related-chips">${pages.map((p) => `
+         <button class="rel-chip" data-nav="#mod/${p.id}">${p.icon} ${esc(p.name)}</button>`).join("")}</div>`
+    : "";
+  $app.innerHTML = `
+    <div class="list-head">
+      <h1>CM画面表示「${esc(query)}」の検索結果</h1>
+      <span class="result-count">${alarms.length} 件</span>
+    </div>
+    ${notesHtml}
+    ${alarms.length ? `<div class="alarm-list" style="margin-top:12px">${alarms.map(alarmRow).join("")}</div>` : ""}
+    ${!alarms.length && !notes.length ? `<div class="empty-note">該当が見つかりませんでした。<br>画面の上段に表示されている英語のアラーム名（例: PWM1、TOOL LOCK、CONTROL VALVE）で入力してみてください。</div>` : ""}
+    ${pagesHtml}
+  `;
+  $app.querySelectorAll(".alarm-row, .rel-chip").forEach((el) => {
+    el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+  });
+}
+
+/* ---------- 描画：Q&A ---------- */
+
+function renderQA(openIndex) {
+  const items = QA_ITEMS.map((item, i) => `
+    <details class="qa-item" id="qa-${i}" ${i === openIndex ? "open" : ""}>
+      <summary><span class="qa-q">Q</span>${esc(item.q)}</summary>
+      <div class="qa-body">
+        <p>${esc(item.a)}</p>
+        ${(item.links || []).length ? `<div class="related-chips">${item.links.map((l) => `
+          <button class="rel-chip" data-nav="${l.hash}">${esc(l.label)}</button>`).join("")}</div>` : ""}
+      </div>
+    </details>`).join("");
+
+  $app.innerHTML = `
+    <button class="back-btn" id="back-btn">← 戻る</button>
+    <div class="detail-header">
+      <div class="detail-id"><small>よくある</small><span style="font-size:20px">❓</span></div>
+      <div class="detail-titles">
+        <h1>よくある質問（Q&amp;A）</h1>
+        <div class="detail-code">アラームの読み方・リセット方法・困ったときの切り分け</div>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="qa-list">${items}</div>
+    </div>
+  `;
+  document.getElementById("back-btn").addEventListener("click", () => {
+    if (history.length > 1) history.back();
+    else location.hash = "#home";
+  });
+  $app.querySelectorAll(".rel-chip").forEach((el) => {
+    el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+  });
+  if (openIndex != null) {
+    const el = document.getElementById(`qa-${openIndex}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 /* ---------- 描画：一覧 ---------- */
@@ -163,7 +305,7 @@ function alarmRow(a) {
     </button>`;
 }
 
-function renderList(items, title, moduleHits) {
+function renderList(items, title, moduleHits, qaHits) {
   const rows = items.map(alarmRow).join("");
   let moduleHtml = "";
   if (moduleHits && moduleHits.length) {
@@ -180,7 +322,18 @@ function renderList(items, title, moduleHits) {
           </button>`).join("")}
       </div>`;
   }
-  const total = items.length + (moduleHits ? moduleHits.length : 0);
+  if (qaHits && qaHits.length) {
+    moduleHtml += `
+      <h2 class="section-title" style="margin-top:24px">よくある質問での該当（${qaHits.length} 件）</h2>
+      <div class="alarm-list">
+        ${qaHits.map(({ item, i }) => `
+          <button class="alarm-row" data-nav="#qa/${i}">
+            <span class="row-id mod-id">Q&amp;A</span>
+            <span class="row-main"><span class="row-title">${esc(item.q)}</span></span>
+          </button>`).join("")}
+      </div>`;
+  }
+  const total = items.length + (moduleHits ? moduleHits.length : 0) + (qaHits ? qaHits.length : 0);
   $app.innerHTML = `
     <div class="list-head">
       <h1>${esc(title)}</h1>
@@ -378,10 +531,19 @@ function route() {
     const page = MODULE_BY_ID.get(hash.slice(5));
     if (page) { renderModulePage(page); return; }
   }
+  if (hash.startsWith("#display/")) {
+    renderDisplayResults(hash.slice(9));
+    return;
+  }
+  if (hash === "#qa" || hash.startsWith("#qa/")) {
+    const n = hash.startsWith("#qa/") ? parseInt(hash.slice(4), 10) : null;
+    renderQA(Number.isInteger(n) ? n : null);
+    return;
+  }
   if (hash.startsWith("#search/")) {
     const q = hash.slice(8);
     if ($search.value !== q) $search.value = q;
-    renderList(searchAlarms(q), `「${q}」の検索結果`, searchModules(q));
+    renderList(searchAlarms(q), `「${q}」の検索結果`, searchModules(q), searchQA(q));
     return;
   }
   if (hash === "#all") {

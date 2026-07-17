@@ -521,3 +521,57 @@ body {
   border-radius: var(--radius);
   background: #fff;
 }
+
+/* ---------- Q&A・CM画面検索 ---------- */
+.hero-divider { border-top: 1px solid var(--border); margin: 20px auto 16px; max-width: 480px; }
+.display-form input {
+  width: 340px;
+  max-width: 100%;
+  font-size: 15px;
+  text-align: left;
+}
+.qa-link { background: #3a3a00; margin-top: 8px; }
+.qa-link:hover { background: #4d4d00; }
+.note-info {
+  background: #eef6ff;
+  border: 1px solid #9dc3e6;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13.5px;
+  margin-top: 10px;
+}
+.note-info::before { content: "💡 "; }
+.qa-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.qa-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fafaf8;
+  overflow: hidden;
+}
+.qa-item summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 14.5px;
+  list-style: none;
+}
+.qa-item summary::-webkit-details-marker { display: none; }
+.qa-item summary:hover { background: #fffbe8; }
+.qa-item[open] summary { border-bottom: 1px solid var(--border); background: #fffbe8; }
+.qa-q {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--black);
+  color: var(--yellow);
+  font-weight: 800;
+  font-size: 13px;
+  text-align: center;
+  line-height: 24px;
+}
+.qa-body { padding: 12px 16px 14px; font-size: 14px; }
+.qa-body p { margin: 0 0 10px; }
