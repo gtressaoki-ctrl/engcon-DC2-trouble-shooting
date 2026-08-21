@@ -85,7 +85,7 @@ function searchModules(query) {
   if (!q || /^\d+$/.test(q)) return [];
   const words = q.split(/\s+/);
   return MODULE_INDEX.filter((m) => {
-    const hay = normalize(`${m.page.name} ${m.group} ${m.entry.badge} ${m.entry.title} ${m.entry.desc} ${m.entry.action || ""}`);
+    const hay = normalize(`${m.page.name} ${m.group} ${m.entry.badge} ${m.entry.title} ${m.entry.desc} ${m.entry.action || ""} ${m.entry.tip || ""} ${(m.entry.tipSteps || []).join(" ")}`);
     return words.every((w) => hay.includes(w));
   });
 }
@@ -419,7 +419,7 @@ function renderList(items, title, moduleHits, qaHits, caseHits) {
       <div class="alarm-list">${caseHits.map(caseRow).join("")}</div>`;
   }
   if (moduleHits && moduleHits.length) {
-    moduleHtml = `
+    moduleHtml += `
       <h2 class="section-title" style="margin-top:24px">QSC・その他モジュールでの該当（${moduleHits.length} 件）</h2>
       <div class="alarm-list">
         ${moduleHits.map((m) => `
@@ -474,6 +474,7 @@ function renderModulePage(page) {
             </div>
             <p class="mod-desc">${esc(e.desc)}</p>
             ${e.action ? `<div class="mod-action"><strong>対処：</strong>${esc(e.action)}</div>` : ""}
+            ${e.tip ? `<div class="mod-tip"><strong>💡 現場での経験則：</strong>${esc(e.tip)}${(e.tipSteps || []).length ? `<ul class="tip-list">${e.tipSteps.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}</div>` : ""}
           </div>`).join("")}
       </div>
     </div>`).join("");

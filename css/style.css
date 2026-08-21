@@ -452,6 +452,21 @@ body {
 }
 .row-id.mod-id { font-size: 12px; min-width: 56px; }
 
+/* 現場での経験則（取説にない実地のノウハウ） */
+.mod-tip, .tip-box {
+  margin-top: 8px;
+  background: #eef7ff;
+  border: 1px solid #7fb2e5;
+  border-left: 4px solid #2f7fd1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+}
+.mod-tip strong, .tip-box strong { color: #1c5fa8; }
+.tip-box { margin-top: 14px; font-size: 14.5px; }
+.tip-list { margin: 6px 0 0; padding-left: 22px; }
+.tip-list li { margin: 4px 0; }
+
 /* QPM パネル図 */
 .qpm-note { font-size: 13px; color: var(--text-sub); margin: 0 0 10px !important; }
 .qpm-fig { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
