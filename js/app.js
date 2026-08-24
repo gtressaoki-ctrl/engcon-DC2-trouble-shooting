@@ -107,6 +107,7 @@ function caseHaystack(c) {
   return normalize([
     c.title, c.machine, c.scene, c.summary, c.cause,
     (c.symptoms || []).join(" "), (c.fixes || []).join(" "), (c.points || []).join(" "),
+    (c.procedure || []).join(" "),
     (c.keywords || []).join(" "),
   ].join(" "));
 }
@@ -210,7 +211,7 @@ function renderHome() {
     <div class="cat-grid">${tiles}</div>
     <button class="all-link" data-nav="#all">全アラーム一覧を見る（${ALARMS.length} 件）</button>
     <button class="all-link qa-link" data-nav="#qa">❓ よくある質問（Q&amp;A）を見る（${QA_ITEMS.length} 件）</button>
-    <button class="all-link qa-link" data-nav="#cases">🧰 現場事例（実際に起きたトラブル）を見る（${CASES.length} 件）</button>
+    <button class="all-link qa-link" data-nav="#cases">🧰 現場事例・取付メモを見る（${CASES.length} 件）</button>
     <h2 class="section-title">QSC・その他モジュールのアラーム</h2>
     <div class="cat-grid">
       ${MODULE_PAGES.map((m) => `
@@ -326,8 +327,8 @@ function renderCaseList() {
     <div class="detail-header">
       <div class="detail-id"><small>現場</small><span style="font-size:20px">🧰</span></div>
       <div class="detail-titles">
-        <h1>現場事例</h1>
-        <div class="detail-code">実際の取付・修理で起きた症状と、その原因・処置の記録</div>
+        <h1>現場事例・取付メモ</h1>
+        <div class="detail-code">実際の取付・修理で起きた症状と原因・処置、車種ごとの取付／設定のメモ</div>
       </div>
     </div>
     <div class="detail-body">
@@ -361,14 +362,16 @@ function renderCaseDetail(c) {
   $app.innerHTML = `
     <button class="back-btn" id="back-btn">← 戻る</button>
     <div class="detail-header">
-      <div class="detail-id"><small>機番</small><span style="font-size:20px">${esc(c.machine)}</span></div>
+      <div class="detail-id"><small>${c.kind === "setup" ? "対象" : "機番"}</small><span style="font-size:20px">${esc(c.machine)}</span></div>
       <div class="detail-titles">
         <h1>${esc(c.title)}</h1>
-        <div class="detail-code">🧰 現場事例${c.scene ? ` ─ ${esc(c.scene)}` : ""}${c.logged ? `（記録: ${esc(c.logged)}）` : ""}</div>
+        <div class="detail-code">${c.kind === "setup" ? "🔧 取付・設定メモ" : "🧰 現場事例"}${c.scene ? ` ─ ${esc(c.scene)}` : ""}${c.logged ? `（記録: ${esc(c.logged)}）` : ""}</div>
       </div>
     </div>
     <div class="detail-body">
       <div class="note-box">${esc(c.summary)}</div>
+      ${(c.procedure || []).length ? `<div class="detail-section"><h2>取付・設定の手順</h2>
+        <ol class="cause-list">${c.procedure.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
       ${(c.symptoms || []).length ? `<div class="detail-section"><h2>出ていた症状</h2>${list(c.symptoms)}</div>` : ""}
       ${c.cause ? `<div class="detail-section"><h2>原因</h2><p>${esc(c.cause)}</p></div>` : ""}
       ${(c.fixes || []).length ? `<div class="detail-section"><h2>行った処置</h2>${list(c.fixes)}</div>` : ""}
@@ -402,10 +405,10 @@ function alarmRow(a) {
 function caseRow(c) {
   return `
     <button class="alarm-row" data-nav="#case/${c.id}">
-      <span class="row-id mod-id">事例</span>
+      <span class="row-id mod-id">${c.kind === "setup" ? "設定" : "事例"}</span>
       <span class="row-main">
         <span class="row-title">${esc(c.title)}</span><br>
-        <span class="row-code">🧰 機番 ${esc(c.machine)}${c.scene ? ` ─ ${esc(c.scene)}` : ""}</span>
+        <span class="row-code">${c.kind === "setup" ? "🔧" : "🧰"} ${esc(c.machine)}${c.scene ? ` ─ ${esc(c.scene)}` : ""}</span>
       </span>
     </button>`;
 }

@@ -7,6 +7,34 @@
 
 const CASES = [
   {
+    id: "ecr145e-ec219-quickcoupler",
+    kind: "setup",
+    title: "ECR145E＋EC219：クイックカプラバルブはオリジナルを使う（接続と割り当て）",
+    machine: "ECR145E ＋ EC219",
+    scene: "新規取付（配線・設定）",
+    logged: "2026-08-24",
+    summary:
+      "ECR145E に EC219 を取り付ける場合、クイックカプラバルブは機械のオリジナル（純正）をそのまま使います。接続は QSC キットに入っているコネクタと2ピンケーブルを使い、2ピンを QCM の X3-4／X3-8 に差し込みます。設定は Input mapping で LD1＝QSC、RD1＝PWM5B を割り当てます。",
+    procedure: [
+      "クイックカプラバルブは交換せず、機械のオリジナル（純正）バルブを使用する。",
+      "接続には、一般的に QSC キットに含まれているコネクタと2ピンケーブルを使用する。",
+      "2ピンケーブルを QCM の X3-4 と X3-8 に差し込む。",
+      "MicroConf の Input mapping で LD1 に QSC を割り当てる。",
+      "同じく Input mapping で RD1 に PWM5B を割り当てる。",
+    ],
+    points: [
+      "この組み合わせではクイックカプラバルブを別途用意する必要はない（オリジナル流用）。",
+      "2ピンの差し込み先（QCM X3-4／X3-8）と Input mapping の割り当て（LD1＝QSC、RD1＝PWM5B）はセットで覚える。どちらかが違うとボタン操作が効かない。",
+    ],
+    keywords: [
+      "ecr145e", "ecr145", "ec219", "クイックカプラ", "クイックカプラバルブ", "オリジナル", "純正",
+      "qsc キット", "コネクタ", "2ピン", "2ピンケーブル", "x3-4", "x3-8", "qcm",
+      "input mapping", "インプットマッピング", "ld1", "rd1", "pwm5b", "割り当て", "取付",
+    ],
+    relatedAlarms: [],
+    relatedPages: ["system", "cm-guide"],
+  },
+  {
     id: "safestate3-control-valve1-feeder",
     title: "取付時：SAFE STATE 3 ／ CONTROL VALVE1（ホースの接続違い）",
     machine: "シングルフィーダー仕様機",
