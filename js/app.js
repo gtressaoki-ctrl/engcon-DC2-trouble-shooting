@@ -11,6 +11,7 @@ const $search = document.getElementById("search-input");
 const ALARM_BY_ID = new Map(ALARMS.map((a) => [a.id, a]));
 const CAT_BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
 const MODULE_BY_ID = new Map(MODULE_PAGES.map((m) => [m.id, m]));
+const CASE_BY_ID = new Map(CASES.map((c) => [c.id, c]));
 
 // モジュールページの全エントリを検索用にフラット化
 const MODULE_INDEX = MODULE_PAGES.flatMap((page) =>
@@ -84,7 +85,7 @@ function searchModules(query) {
   if (!q || /^\d+$/.test(q)) return [];
   const words = q.split(/\s+/);
   return MODULE_INDEX.filter((m) => {
-    const hay = normalize(`${m.page.name} ${m.group} ${m.entry.badge} ${m.entry.title} ${m.entry.desc} ${m.entry.action || ""}`);
+    const hay = normalize(`${m.page.name} ${m.group} ${m.entry.badge} ${m.entry.title} ${m.entry.desc} ${m.entry.action || ""} ${m.entry.tip || ""} ${(m.entry.tipSteps || []).join(" ")}`);
     return words.every((w) => hay.includes(w));
   });
 }
@@ -99,6 +100,26 @@ function searchQA(query) {
       const hay = normalize(`${item.q} ${item.a}`);
       return words.every((w) => hay.includes(w));
     });
+}
+
+// 現場事例の検索（機番・症状・原因・処置・キーワードを対象）
+function caseHaystack(c) {
+  return normalize([
+    c.title, c.machine, c.scene, c.summary, c.cause,
+    (c.symptoms || []).join(" "), (c.fixes || []).join(" "), (c.points || []).join(" "),
+    (c.procedure || []).join(" "),
+    (c.keywords || []).join(" "),
+  ].join(" "));
+}
+
+function searchCases(query) {
+  const q = normalize(query);
+  if (!q) return [];
+  const words = q.split(/\s+/);
+  return CASES.filter((c) => {
+    const hay = caseHaystack(c);
+    return words.every((w) => hay.includes(w));
+  });
 }
 
 // CM 画面の表示文字から調べる検索
@@ -121,7 +142,7 @@ function searchDisplay(query) {
   const ss = qn.match(/safe ?state[:\s]*(\d+)/);
   if (ss) {
     const n = parseInt(ss[1], 10);
-    if (n >= 1 && n <= 8) notes.push(`SAFE STATE ${n}＝内部の不具合による安全状態です。繰り返す場合はサポートへ連絡してください。`);
+    if (n >= 1 && n <= 8) notes.push(`SAFE STATE ${n}＝取説上は内部の不具合による安全状態です。ただし取付直後の場合は、油圧ホースの接続違い（シングルフィーダー仕様なのにダブルフィーダーのつなぎ方など）が原因のことがあります。まず配管が仕様どおりか確認し、それでも繰り返す場合はサポートへ連絡してください。`);
     if (n === 9 || n === 11) notes.push(`SAFE STATE ${n}＝CVP1（コントロールバルブ圧力スイッチ1）の圧力異常です。バルブ・圧力スイッチ・接続を確認してください。`);
     if (n === 10 || n === 12) notes.push(`SAFE STATE ${n}＝CVP2（コントロールバルブ圧力スイッチ2）の圧力異常です。バルブ・圧力スイッチ・接続を確認してください。`);
   }
@@ -190,6 +211,7 @@ function renderHome() {
     <div class="cat-grid">${tiles}</div>
     <button class="all-link" data-nav="#all">全アラーム一覧を見る（${ALARMS.length} 件）</button>
     <button class="all-link qa-link" data-nav="#qa">❓ よくある質問（Q&amp;A）を見る（${QA_ITEMS.length} 件）</button>
+    <button class="all-link qa-link" data-nav="#cases">🧰 現場事例・取付メモを見る（${CASES.length} 件）</button>
     <h2 class="section-title">QSC・その他モジュールのアラーム</h2>
     <div class="cat-grid">
       ${MODULE_PAGES.map((m) => `
@@ -231,6 +253,11 @@ function renderHome() {
 
 function renderDisplayResults(query) {
   const { notes, alarms, pages } = searchDisplay(query);
+  const cases = searchCases(query);
+  const casesHtml = cases.length
+    ? `<h2 class="section-title" style="margin-top:24px">現場事例での該当（${cases.length} 件）</h2>
+       <div class="alarm-list">${cases.map(caseRow).join("")}</div>`
+    : "";
   const notesHtml = notes.map((n) => `<div class="note-info">${esc(n)}</div>`).join("");
   const pagesHtml = pages.length
     ? `<h2 class="section-title" style="margin-top:24px">関連ページ</h2>
@@ -244,7 +271,8 @@ function renderDisplayResults(query) {
     </div>
     ${notesHtml}
     ${alarms.length ? `<div class="alarm-list" style="margin-top:12px">${alarms.map(alarmRow).join("")}</div>` : ""}
-    ${!alarms.length && !notes.length ? `<div class="empty-note">該当が見つかりませんでした。<br>画面の上段に表示されている英語のアラーム名（例: PWM1、TOOL LOCK、CONTROL VALVE）で入力してみてください。</div>` : ""}
+    ${!alarms.length && !notes.length && !cases.length ? `<div class="empty-note">該当が見つかりませんでした。<br>画面の上段に表示されている英語のアラーム名（例: PWM1、TOOL LOCK、CONTROL VALVE）で入力してみてください。</div>` : ""}
+    ${casesHtml}
     ${pagesHtml}
   `;
   $app.querySelectorAll(".alarm-row, .rel-chip").forEach((el) => {
@@ -291,6 +319,75 @@ function renderQA(openIndex) {
   }
 }
 
+/* ---------- 描画：現場事例 ---------- */
+
+function renderCaseList() {
+  $app.innerHTML = `
+    <button class="back-btn" id="back-btn">← 戻る</button>
+    <div class="detail-header">
+      <div class="detail-id"><small>現場</small><span style="font-size:20px">🧰</span></div>
+      <div class="detail-titles">
+        <h1>現場事例・取付メモ</h1>
+        <div class="detail-code">実際の取付・修理で起きた症状と原因・処置、車種ごとの取付／設定のメモ</div>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="alarm-list">${CASES.map(caseRow).join("")}</div>
+    </div>
+  `;
+  document.getElementById("back-btn").addEventListener("click", () => {
+    if (history.length > 1) history.back();
+    else location.hash = "#home";
+  });
+  $app.querySelectorAll(".alarm-row").forEach((el) => {
+    el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+  });
+}
+
+function renderCaseDetail(c) {
+  const list = (arr) => `<ul class="cause-list">${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+
+  const relAlarms = (c.relatedAlarms || []).map((id) => ALARM_BY_ID.get(id)).filter(Boolean);
+  const relPages = (c.relatedPages || []).map((p) => MODULE_BY_ID.get(p)).filter(Boolean);
+  const relatedHtml = (relAlarms.length || relPages.length)
+    ? `<div class="detail-section"><h2>関連するアラーム・ページ</h2>
+         <div class="related-chips">
+           ${relAlarms.map((r) => `
+             <button class="rel-chip" data-nav="#alarm/${r.id}"><span class="rel-id">${r.id}</span>${esc(r.title)}</button>`).join("")}
+           ${relPages.map((p) => `
+             <button class="rel-chip" data-nav="#mod/${p.id}">${p.icon} ${esc(p.name)}</button>`).join("")}
+         </div></div>`
+    : "";
+
+  $app.innerHTML = `
+    <button class="back-btn" id="back-btn">← 戻る</button>
+    <div class="detail-header">
+      <div class="detail-id"><small>${c.kind === "setup" ? "対象" : "機番"}</small><span style="font-size:20px">${esc(c.machine)}</span></div>
+      <div class="detail-titles">
+        <h1>${esc(c.title)}</h1>
+        <div class="detail-code">${c.kind === "setup" ? "🔧 取付・設定メモ" : "🧰 現場事例"}${c.scene ? ` ─ ${esc(c.scene)}` : ""}${c.logged ? `（記録: ${esc(c.logged)}）` : ""}</div>
+      </div>
+    </div>
+    <div class="detail-body">
+      <div class="note-box">${esc(c.summary)}</div>
+      ${(c.procedure || []).length ? `<div class="detail-section"><h2>取付・設定の手順</h2>
+        <ol class="cause-list">${c.procedure.map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>` : ""}
+      ${(c.symptoms || []).length ? `<div class="detail-section"><h2>出ていた症状</h2>${list(c.symptoms)}</div>` : ""}
+      ${c.cause ? `<div class="detail-section"><h2>原因</h2><p>${esc(c.cause)}</p></div>` : ""}
+      ${(c.fixes || []).length ? `<div class="detail-section"><h2>行った処置</h2>${list(c.fixes)}</div>` : ""}
+      ${(c.points || []).length ? `<div class="detail-section"><h2>次回のためのポイント</h2>${list(c.points)}</div>` : ""}
+      ${relatedHtml}
+    </div>
+  `;
+  document.getElementById("back-btn").addEventListener("click", () => {
+    if (history.length > 1) history.back();
+    else location.hash = "#home";
+  });
+  $app.querySelectorAll(".rel-chip").forEach((el) => {
+    el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+  });
+}
+
 /* ---------- 描画：一覧 ---------- */
 
 function alarmRow(a) {
@@ -305,11 +402,27 @@ function alarmRow(a) {
     </button>`;
 }
 
-function renderList(items, title, moduleHits, qaHits) {
+function caseRow(c) {
+  return `
+    <button class="alarm-row" data-nav="#case/${c.id}">
+      <span class="row-id mod-id">${c.kind === "setup" ? "設定" : "事例"}</span>
+      <span class="row-main">
+        <span class="row-title">${esc(c.title)}</span><br>
+        <span class="row-code">${c.kind === "setup" ? "🔧" : "🧰"} ${esc(c.machine)}${c.scene ? ` ─ ${esc(c.scene)}` : ""}</span>
+      </span>
+    </button>`;
+}
+
+function renderList(items, title, moduleHits, qaHits, caseHits) {
   const rows = items.map(alarmRow).join("");
   let moduleHtml = "";
+  if (caseHits && caseHits.length) {
+    moduleHtml += `
+      <h2 class="section-title" style="margin-top:24px">現場事例での該当（${caseHits.length} 件）</h2>
+      <div class="alarm-list">${caseHits.map(caseRow).join("")}</div>`;
+  }
   if (moduleHits && moduleHits.length) {
-    moduleHtml = `
+    moduleHtml += `
       <h2 class="section-title" style="margin-top:24px">QSC・その他モジュールでの該当（${moduleHits.length} 件）</h2>
       <div class="alarm-list">
         ${moduleHits.map((m) => `
@@ -333,7 +446,8 @@ function renderList(items, title, moduleHits, qaHits) {
           </button>`).join("")}
       </div>`;
   }
-  const total = items.length + (moduleHits ? moduleHits.length : 0) + (qaHits ? qaHits.length : 0);
+  const total = items.length + (moduleHits ? moduleHits.length : 0)
+    + (qaHits ? qaHits.length : 0) + (caseHits ? caseHits.length : 0);
   $app.innerHTML = `
     <div class="list-head">
       <h1>${esc(title)}</h1>
@@ -363,6 +477,7 @@ function renderModulePage(page) {
             </div>
             <p class="mod-desc">${esc(e.desc)}</p>
             ${e.action ? `<div class="mod-action"><strong>対処：</strong>${esc(e.action)}</div>` : ""}
+            ${e.tip ? `<div class="mod-tip"><strong>💡 現場での経験則：</strong>${esc(e.tip)}${(e.tipSteps || []).length ? `<ul class="tip-list">${e.tipSteps.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}</div>` : ""}
           </div>`).join("")}
       </div>
     </div>`).join("");
@@ -540,10 +655,15 @@ function route() {
     renderQA(Number.isInteger(n) ? n : null);
     return;
   }
+  if (hash === "#cases") { renderCaseList(); return; }
+  if (hash.startsWith("#case/")) {
+    const c = CASE_BY_ID.get(hash.slice(6));
+    if (c) { renderCaseDetail(c); return; }
+  }
   if (hash.startsWith("#search/")) {
     const q = hash.slice(8);
     if ($search.value !== q) $search.value = q;
-    renderList(searchAlarms(q), `「${q}」の検索結果`, searchModules(q), searchQA(q));
+    renderList(searchAlarms(q), `「${q}」の検索結果`, searchModules(q), searchQA(q), searchCases(q));
     return;
   }
   if (hash === "#all") {
