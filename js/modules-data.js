@@ -211,6 +211,39 @@ const MODULE_PAGES = [
     ],
   },
   {
+    id: "alarm-map",
+    name: "アラーム概略図（8002535＋8002201）",
+    icon: "📐",
+    short: "どのモジュール・コネクタのアラームかを図で確認（エラー番号で×が付きます）",
+    figure: "alarmmap",
+    intro: "engcon 取付説明書 9000876「7.1 アラーム概略図」（キット 8002535／DC2 QSC）と 9000752「8.1 アラーム概略図」（キット 8002201／EXT DC2 QH5）を1枚にまとめた図です。CM の画面に出るアラームは「アラーム名／モジュール／コネクタ／ピン／不具合」の順に並んでいるので、この図でコネクタの位置を確認できます。エラー番号を入力すると、該当コネクタに「×」が付きます（赤＝短絡、橙＝断線、灰＝通信・信号など）。",
+    groups: [
+      {
+        heading: "モジュールの略号",
+        entries: [
+          { badge: "CM", title: "運転室モジュール（DC2・841105）", desc: "両キット共通。コネクタは X1（35ピン）・X2（25ピン）・X3（25ピン）。", action: "PWM・DO・CVP・CAN は X1、ジョイスティックは X2、PWM5/6・ツールロック・QCM 接続は X3 です。" },
+          { badge: "TM", title: "チルトローテータモジュール", desc: "両キット共通。コネクタは X1〜X10。", action: "X1＝クイックヒッチロック、X2〜X10＝チルトローテータの各バルブ出力です。" },
+          { badge: "QCM", title: "QSC 電子モジュール（8000139）", desc: "8002535（DC2 QSC）側のモジュール。コネクタ X1〜X8。", action: "LED の意味は「QCM／PWMコンバータ LED」を参照。" },
+          { badge: "QPM", title: "QSC 制御パネル（8000138）", desc: "8002535 側。運転室の操作パネルです。", action: "エラーコードは警告三角の点滅回数で読み取ります。" },
+          { badge: "QLM", title: "Q-Safe ライト（QLM）", desc: "8002535 側。外部の表示ランプモジュールです。", action: "" },
+          { badge: "EM", title: "拡張モジュール（EXT DC2 QH5）", desc: "8002201 側のモジュールです。", action: "通信が切れると EXPANSION MODULE DISCONNECTED（Id 133）になります。" },
+        ],
+      },
+      {
+        heading: "アラーム表示の読み方（取付説明書 7.2／8.2）",
+        entries: [
+          { badge: "1", title: "アラーム表示（アラーム名）", desc: "例: PWM1、TOOL LOCK、JOYSTICK LA1 など。何の機能かを表します。", action: "" },
+          { badge: "2A", title: "電子機器モジュール", desc: "CM・TM など、どのモジュールのアラームかを表します。", action: "" },
+          { badge: "2B", title: "コネクタ", desc: "X1／X2／X3 など、そのモジュールのどのコネクタかを表します。", action: "図でコネクタの位置を確認してください。" },
+          { badge: "2C", title: "ピン", desc: "コネクタ内のピン番号です（例: CM X1:13）。", action: "配線・圧着・差し込みを確認する場所です。" },
+          { badge: "2D", title: "機能不具合", desc: "SHORT CIRCUIT（短絡）／OPEN CIRCUIT（断線）／SIGNAL ERROR（信号異常）など。", action: "短絡＝どこかで接触、断線＝どこかで切れている、が基本の切り分けです。" },
+          { badge: "(1/2)", title: "表示件数", desc: "「合計2件のうち1件目を表示中」の意味です。", action: "" },
+          { badge: "COUNT", title: "アラーム発動件数", desc: "そのアラームが発生した回数です。故障の内容ではありません。", action: "" },
+        ],
+      },
+    ],
+  },
+  {
     id: "system",
     name: "システム構成図（DC2 QSC）",
     icon: "🗺️",

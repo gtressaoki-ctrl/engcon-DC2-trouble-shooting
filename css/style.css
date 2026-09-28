@@ -626,3 +626,17 @@ body {
 .wire-seg.is-short { stroke: #d33434; stroke-width: 5; }
 .wire-seg.is-open  { stroke: #e08600; stroke-width: 5; stroke-dasharray: 10 6; }
 .wire-seg.is-other { stroke: #555; stroke-width: 5; stroke-dasharray: 3 5; }
+
+/* アラーム概略図（キット切替・コネクタの×） */
+.amap-tool { margin: 12px 0 8px; background: #fafaf8; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.amap-kits { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.kit-btn {
+  padding: 8px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
+  border: 2px solid #ccc; border-radius: 999px; background: #fff; color: #333;
+}
+.kit-btn.is-on { border-color: #222; background: var(--yellow, #ffd500); color: #111; }
+.amap-mod.is-dim { opacity: 0.25; }
+.amap-port rect { transition: fill .15s; }
+.amap-port.is-short rect { fill: #ffe2e2; stroke: #d33434; stroke-width: 3; }
+.amap-port.is-open  rect { fill: #fff0d8; stroke: #e08600; stroke-width: 3; }
+.amap-port.is-other rect { fill: #eee; stroke: #555; stroke-width: 3; }
