@@ -608,17 +608,24 @@ function initAlarmMap(presetId) {
   const result = document.getElementById("amap-result");
   const svg = document.getElementById("alarmmap-svg");
 
-  // キット切替：選んだキットに含まれないモジュールを薄くする
-  const setKit = (kit) => {
+  // キット切替：選んだキットに含まれないモジュールを薄くし、キット固有のメモを出す
+  const note = document.getElementById("amap-kitnote");
+  const setKit = (kitId) => {
+    const kit = ALARM_MAP_KITS.find((k) => k.id === kitId) || ALARM_MAP_KITS[0];
     svg.querySelectorAll(".amap-mod").forEach((g) => {
       const k = g.dataset.kit;
-      g.classList.toggle("is-dim", kit !== "both" && k !== "both" && k !== kit);
+      const shown = kit.id === "all" || k === "common" || k === kit.fam || k === kit.id;
+      g.classList.toggle("is-dim", !shown);
     });
-    document.querySelectorAll(".kit-btn").forEach((b) => b.classList.toggle("is-on", b.dataset.kit === kit));
+    document.querySelectorAll(".kit-btn").forEach((b) => b.classList.toggle("is-on", b.dataset.kit === kit.id));
+    note.innerHTML = kit.doc
+      ? `<strong>${esc(kit.id)}</strong>（取付説明書 ${esc(kit.doc)}）：${esc(kit.note)}`
+      : esc(kit.note);
   };
   document.querySelectorAll(".kit-btn").forEach((b) => {
     b.addEventListener("click", () => setKit(b.dataset.kit));
   });
+  setKit("all");
 
   const apply = (raw) => {
     const q = normalize(raw);

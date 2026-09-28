@@ -640,3 +640,4 @@ body {
 .amap-port.is-short rect { fill: #ffe2e2; stroke: #d33434; stroke-width: 3; }
 .amap-port.is-open  rect { fill: #fff0d8; stroke: #e08600; stroke-width: 3; }
 .amap-port.is-other rect { fill: #eee; stroke: #555; stroke-width: 3; }
+.amap-kitnote { font-size: 13px; line-height: 1.7; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; margin-bottom: 10px; }

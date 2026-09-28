@@ -378,8 +378,17 @@ FIGURES.system = function () {
  * 各コネクタに data-port を持たせ、アラーム番号から「×」を付けられるようにしている。
  * ================================================================ */
 
+// 対応キット（取付説明書の番号と、そのキット固有のメモ）
+const ALARM_MAP_KITS = [
+  { id: "all", label: "全部を表示", fam: null, doc: "", note: "4キットすべてのモジュールを表示しています。キットを選ぶと、そのキットに無いモジュールが薄くなります。" },
+  { id: "8001080", label: "8001080", fam: "qsc", doc: "9000358", note: "DC2 QSC＋EC／QH（MIG2・CAT 向け）。モジュール構成は 8002535 と同じ（CM・TM・QCM・QPM・QLM）ですが、電源の取り方が違い、リレーケーブル 8001058（リレーボックス）が追加で付属します。リレーはバッテリー近くに取り付け、CM-X1:22（GND）／X1:23（VCC）と、QCM-X1（Mini-Fit）に接続します。" },
+  { id: "8002535", label: "8002535", fam: "qsc", doc: "9000876", note: "DC2 QSC（12／24V・16M）。CM・TM・QCM・QPM・QLM 構成です。リレーボックスはありません。" },
+  { id: "8002200", label: "8002200", fam: "ext", doc: "9000751", note: "EXT DC2 QH4（QS45／50 向け）。CM・TM・EM（拡張モジュール）構成で、QCM／QPM／QLM はありません。" },
+  { id: "8002201", label: "8002201", fam: "ext", doc: "9000752", note: "EXT DC2 QH5（S60／S70・QS60／70／80 向け）。モジュール構成は 8002200 と同じです。" },
+];
+
 FIGURES.alarmmap = function () {
-  // モジュール箱（kit: both／qsc＝8002535のみ／qh5＝8002201のみ）
+  // モジュール箱（kit: common＝全キット共通／qsc＝QSC系（8001080・8002535）／ext＝EXT DC2系（8002200・8002201）／キット番号＝そのキットのみ）
   const mod = (x, y, w, h, title, sub, kit, fill) => `
     <g class="amap-mod" data-kit="${kit}">
       <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10"
@@ -388,7 +397,7 @@ FIGURES.alarmmap = function () {
       <text x="${x + w / 2}" y="${y + 40}" text-anchor="middle" font-size="11" fill="#333">${sub}</text>
     </g>`;
 
-  // コネクタ（クリック／×の対象）
+  // コネクタ（×の対象）
   const port = (x, y, w, label, pins) => `
     <g class="amap-port" data-port="${label}">
       <rect x="${x}" y="${y}" width="${w}" height="26" rx="5" fill="#fff" stroke="#333" stroke-width="2"/>
@@ -399,66 +408,70 @@ FIGURES.alarmmap = function () {
   const line = (pts, dash) => `<polyline points="${pts}" fill="none" stroke="#444" stroke-width="2.5"
       stroke-linejoin="round"${dash ? ` stroke-dasharray="${dash}"` : ""}/>`;
 
-  // TM の X1〜X10
   let tmPorts = "";
   for (let i = 0; i < 10; i++) {
     const col = i % 5, row = Math.floor(i / 5);
     tmPorts += port(500 + col * 44, 150 + row * 46, 40, `TM-X${i + 1}`, "");
   }
-  // QCM の X1〜X8
   let qcmPorts = "";
   for (let i = 0; i < 8; i++) {
     qcmPorts += port(58 + (i % 4) * 58, 360 + Math.floor(i / 4) * 46, 52, `QCM-X${i + 1}`, "");
   }
 
   const svg = `
-  <svg viewBox="0 0 760 560" id="alarmmap-svg" xmlns="http://www.w3.org/2000/svg"
-       role="img" aria-label="アラーム概略図（8002535／8002201 合体版）">
+  <svg viewBox="0 0 760 600" id="alarmmap-svg" xmlns="http://www.w3.org/2000/svg"
+       role="img" aria-label="アラーム概略図（8001080／8002535／8002200／8002201 合体版）">
     <!-- つながり -->
-    ${line("300,110 470,110")}                       <!-- CM-X1 ↔ TM（CAN） -->
-    ${line("160,206 160,300")}                       <!-- CM-X3 ↔ QCM -->
-    ${line("620,206 620,250 690,250 690,470 660,470", "7 5")} <!-- TM/CM ↔ EM -->
-    ${line("110,452 110,500")}                       <!-- QCM ↔ QPM -->
-    ${line("250,452 250,500")}                       <!-- QCM ↔ QLM -->
+    ${line("300,110 470,110")}
+    ${line("160,206 160,300")}
+    ${line("620,206 620,250 690,250 690,470 660,470", "7 5")}
+    ${line("110,452 110,500")}
+    ${line("250,452 250,500")}
+    ${line("300,130 400,130 400,560 360,560", "4 4")}
     <text x="385" y="102" text-anchor="middle" font-size="10.5" fill="#555">CAN（CM-X1:28-35）</text>
 
-    <!-- CM（両キット共通） -->
-    ${mod(40, 50, 260, 130, "CM 運転室モジュール", "841105（DC2）", "both")}
+    <!-- CM（全キット共通） -->
+    ${mod(40, 50, 260, 130, "CM 運転室モジュール", "841105（DC2）", "common")}
     ${port(58, 150, 68, "CM-X1", "35ピン")}
     ${port(136, 150, 68, "CM-X2", "25ピン")}
     ${port(214, 150, 68, "CM-X3", "25ピン")}
 
-    <!-- TM（両キット共通） -->
-    ${mod(470, 50, 250, 130, "TM チルトローテータモジュール", "X1〜X10", "both")}
+    <!-- TM（全キット共通） -->
+    ${mod(470, 50, 250, 130, "TM チルトローテータモジュール", "X1〜X10", "common")}
     ${tmPorts}
 
-    <!-- QCM・QPM・QLM（8002535 側） -->
+    <!-- QCM・QPM・QLM（QSC系: 8001080／8002535） -->
     ${mod(40, 300, 260, 120, "QCM QSC電子モジュール", "8000139", "qsc", "#fff8d6")}
     ${qcmPorts}
     ${mod(40, 500, 140, 50, "QPM", "QSC制御パネル 8000138", "qsc", "#fff8d6")}
     ${mod(200, 500, 140, 50, "QLM", "Q-Safeライト", "qsc", "#fff8d6")}
 
-    <!-- EM（8002201 側） -->
-    ${mod(530, 440, 130, 60, "EM 拡張モジュール", "EXT DC2 QH5", "qh5", "#e8f1ff")}
+    <!-- EM（EXT DC2系: 8002200／8002201） -->
+    ${mod(530, 440, 130, 60, "EM 拡張モジュール", "EXT DC2 QH4／QH5", "ext", "#e8f1ff")}
 
-    <!-- キット凡例 -->
+    <!-- リレーボックス（8001080 のみ） -->
+    ${mod(220, 535, 150, 55, "リレーボックス", "リレーケーブル 8001058", "8001080", "#ffe0e0")}
+    <text x="404" y="556" font-size="10" fill="#555">電源（CM-X1:22/23）</text>
+
+    <!-- 凡例 -->
     <g font-size="11">
-      <rect x="330" y="300" width="18" height="12" fill="#ffe98a" stroke="#333"/><text x="356" y="310" fill="#333">両方（8002535／8002201 共通）</text>
-      <rect x="330" y="322" width="18" height="12" fill="#fff8d6" stroke="#333"/><text x="356" y="332" fill="#333">8002535（DC2 QSC）のみ</text>
-      <rect x="330" y="344" width="18" height="12" fill="#e8f1ff" stroke="#333"/><text x="356" y="354" fill="#333">8002201（EXT DC2 QH5）のみ</text>
+      <rect x="330" y="300" width="18" height="12" fill="#ffe98a" stroke="#333"/><text x="356" y="310" fill="#333">全キット共通（CM・TM）</text>
+      <rect x="330" y="322" width="18" height="12" fill="#fff8d6" stroke="#333"/><text x="356" y="332" fill="#333">QSC系（8001080／8002535）</text>
+      <rect x="330" y="344" width="18" height="12" fill="#e8f1ff" stroke="#333"/><text x="356" y="354" fill="#333">EXT DC2系（8002200／8002201）</text>
+      <rect x="330" y="366" width="18" height="12" fill="#ffe0e0" stroke="#333"/><text x="356" y="376" fill="#333">8001080 のみ</text>
     </g>
   </svg>`;
 
   return `
     <div class="detail-section">
-      <h2>アラーム概略図（8002535 ＋ 8002201 合体版）</h2>
-      <p class="qpm-note">engcon 取付説明書 9000876「7.1 アラーム概略図」（8002535 ／ DC2 QSC）と 9000752「8.1 アラーム概略図」（8002201 ／ EXT DC2 QH5）を1枚にまとめた図です。CM と TM は両キット共通、QCM・QPM・QLM は 8002535 側、EM（拡張モジュール）は 8002201 側です。</p>
+      <h2>アラーム概略図（8001080／8002535／8002200／8002201 合体版）</h2>
+      <p class="qpm-note">engcon 取付説明書 9000358（8001080）・9000876（8002535）・9000751（8002200）・9000752（8002201）の「アラーム概略図」を1枚にまとめた図です。CM と TM はどのキットも共通、QCM・QPM・QLM は QSC 系（8001080／8002535）、EM は EXT DC2 系（8002200／8002201）にあります。</p>
       <div class="amap-tool" id="amap-tool">
         <div class="amap-kits">
-          <button type="button" class="kit-btn is-on" data-kit="both">両方を表示</button>
-          <button type="button" class="kit-btn" data-kit="qsc">8002535（DC2 QSC）</button>
-          <button type="button" class="kit-btn" data-kit="qh5">8002201（EXT DC2 QH5）</button>
+          ${ALARM_MAP_KITS.map((k) => `
+            <button type="button" class="kit-btn${k.id === "all" ? " is-on" : ""}" data-kit="${k.id}">${k.label}</button>`).join("")}
         </div>
+        <div class="amap-kitnote" id="amap-kitnote"></div>
         <form class="wire-form" id="amap-form">
           <label for="amap-input">エラー番号を入れると、該当コネクタに「×」が付きます</label>
           <div class="wire-row">
