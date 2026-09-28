@@ -295,22 +295,24 @@ FIGURES.system = function () {
     });
     return s;
   };
-  const wire = (pts) => `<polyline points="${pts}" fill="none" stroke="#222" stroke-width="3" stroke-linejoin="round"/>`;
+  // seg を付けた配線は、アラーム番号から「×」を付けられる対象になる
+  const wire = (pts, seg) => `<polyline points="${pts}" fill="none" stroke="#222" stroke-width="3"
+      stroke-linejoin="round" class="wire-seg"${seg ? ` data-seg="${seg}"` : ""}/>`;
 
   const svg = `
-  <svg viewBox="0 0 740 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DC2 QSC システム構成図">
+  <svg viewBox="0 0 740 560" xmlns="http://www.w3.org/2000/svg" id="system-svg" role="img" aria-label="DC2 QSC システム構成図">
     <!-- 配線 -->
-    ${wire("110,74 110,140 505,140 505,235")}            <!-- QLM → マシンケーブル → CM X1 -->
-    ${wire("620,80 620,140")}                            <!-- チルトローテータ → マシンケーブル -->
-    ${wire("255,96 255,190 470,190 470,235")}            <!-- ジョイスティック左 → CM X2 -->
-    ${wire("385,96 385,190")}                            <!-- ジョイスティック右 → 同上 -->
-    ${wire("255,96 255,120 160,120 160,368")}            <!-- グリップ → QCM（エミュレーション） -->
-    ${wire("540,235 540,166 622,166")}                   <!-- ダブルフィーダ → CM X1 -->
-    ${wire("505,325 505,420 340,420 340,400")}           <!-- CM X3 ↔ QCM -->
-    ${wire("340,440 340,470 540,470 540,505")}           <!-- QCM/CM → 電源 -->
-    ${wire("230,440 230,505 120,505 120,296")}           <!-- QCM → 接地圧センサ -->
-    ${wire("300,368 300,140")}                           <!-- QCM → ツールロックバルブ（マシンケーブルへ） -->
-    ${wire("380,400 380,340 640,340 640,368")}           <!-- QCM X7 → QPM -->
+    ${wire("110,74 110,140 505,140 505,235", "machine")}            <!-- QLM → マシンケーブル → CM X1 -->
+    ${wire("620,80 620,140", "tm")}                            <!-- チルトローテータ → マシンケーブル -->
+    ${wire("255,96 255,190 470,190 470,235", "joystick")}            <!-- ジョイスティック左 → CM X2 -->
+    ${wire("385,96 385,190", "joystick")}                            <!-- ジョイスティック右 → 同上 -->
+    ${wire("255,96 255,120 160,120 160,368", "emul")}            <!-- グリップ → QCM（エミュレーション） -->
+    ${wire("540,235 540,166 622,166", "feeder")}                   <!-- ダブルフィーダ → CM X1 -->
+    ${wire("505,325 505,420 340,420 340,400", "cmqcm")}           <!-- CM X3 ↔ QCM -->
+    ${wire("340,440 340,470 540,470 540,505", "power")}           <!-- QCM/CM → 電源 -->
+    ${wire("230,440 230,505 120,505 120,296", "ground")}           <!-- QCM → 接地圧センサ -->
+    ${wire("300,368 300,140", "toollock")}                           <!-- QCM → ツールロックバルブ（マシンケーブルへ） -->
+    ${wire("380,400 380,340 640,340 640,368", "qpm")}           <!-- QCM X7 → QPM -->
 
     <!-- ラベルタグ -->
     ${figTag(310, 140, "マシンケーブル 842196")}
@@ -349,6 +351,23 @@ FIGURES.system = function () {
     <div class="detail-section">
       <h2>システム構成図（簡略図）</h2>
       <p class="qpm-note">DC2 QSC システムの各モジュールとケーブルのつながりを整理した簡略図です。黄色のタグはケーブルの部品番号です。アラーム文の「CM-X1」「TM-X○」などは、この図の該当モジュールのコネクタを指します。</p>
+      <div class="wire-tool" id="wire-tool">
+        <form class="wire-form" id="wire-form">
+          <label for="wire-input">エラー番号を入れると、その配線に「×」が付きます</label>
+          <div class="wire-row">
+            <input id="wire-input" type="text" inputmode="numeric" pattern="[0-9０-９]*"
+                   placeholder="例: 0（PWM1 短絡）" autocomplete="off">
+            <button type="submit">×を付ける</button>
+            <button type="button" id="wire-clear">消す</button>
+          </div>
+        </form>
+        <div class="wire-legend">
+          <span><i class="sw sw-short"></i>短絡（ショート）</span>
+          <span><i class="sw sw-open"></i>断線（オープン）</span>
+          <span><i class="sw sw-other"></i>その他（通信・信号など）</span>
+        </div>
+        <div class="wire-result" id="wire-result"></div>
+      </div>
       <div class="fig-wrap">${svg}</div>
     </div>`;
 };
