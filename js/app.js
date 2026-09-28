@@ -464,7 +464,256 @@ function renderList(items, title, moduleHits, qaHits, caseHits) {
 
 /* ---------- 描画：モジュールページ（セーフステート・QSC・LED） ---------- */
 
-function renderModulePage(page) {
+/* ---------- 配線図に「×」を付ける（アラーム番号 → 配線系統） ---------- */
+
+// 図の配線に付けた data-seg と、その日本語名
+const WIRE_SEG_LABEL = {
+  machine: "マシンケーブル（CM-X1 ／ 842196）",
+  tm: "チルトローテータへの配線（TM／CAN）",
+  joystick: "ジョイスティック配線（CM-X2 ／ 841190）",
+  emul: "ジョイスティックエミュレーション（PWM5／6・CM-X3.9/.10）",
+  feeder: "フィーダ配線（841108）",
+  cmqcm: "CM ↔ QCM 接続（CM-X3 ／ 8001362・8001356）",
+  power: "電源系統（9〜32V・15A）",
+  ground: "接地圧センサ配線（8001120）",
+  toollock: "ツールロック配線（8000101）",
+  qpm: "QPM ケーブル（QCM-X7）",
+};
+
+// アラームのコード文から、図のどの配線かを推定する
+function wireSegsForAlarm(a) {
+  // 設定・バージョン・モジュール内部のエラーは配線が原因ではないので対象外
+  if (!a || a.noInfo || a.type === "config" || a.type === "internal") return [];
+  const code = String(a.code || "").toUpperCase();
+  const segs = [];
+  const add = (s) => { if (!segs.includes(s)) segs.push(s); };
+
+  if (/CM-X3\.(9|10)/.test(code) || /PWM\s*[56]/.test(code)) add("emul");
+  if (/TOOL LOCK|TL SHORT|TL OPEN/.test(code)) add("toollock");
+  if (/TM-X|TILTROTATOR|TM VALVES|TM FAULT/.test(code)) { add("tm"); add("machine"); }
+  if (/CM-X1/.test(code)) add("machine");
+  if (/CM-X2/.test(code)) add("joystick");
+  if (/CM-X3/.test(code) && !segs.includes("emul")) add("cmqcm");
+  if (/PWM\s*1\b|PWM\s*2\b|FEEDER/.test(code)) add("feeder");
+  if (/CAN SUPPLY|SUPPLY SHORT/.test(code)) add("machine");
+  if (/EXPANSION/.test(code)) { add("machine"); add("cmqcm"); }
+  if (/CVP|CONTROL VALVE|\bCV VALVE\b/.test(code)) add("machine");
+  return segs;
+}
+
+// 配線に × と色を付ける（type: short／open／その他）
+function markWires(segs, type) {
+  const svg = document.getElementById("system-svg");
+  if (!svg) return;
+  svg.querySelectorAll(".wire-seg").forEach((w) => w.classList.remove("is-short", "is-open", "is-other"));
+  svg.querySelectorAll(".wire-x").forEach((x) => x.remove());
+  if (!segs || !segs.length) return;
+
+  const cls = type === "short" ? "is-short" : type === "open" ? "is-open" : "is-other";
+  const color = type === "short" ? "#d33434" : type === "open" ? "#e08600" : "#555";
+  segs.forEach((seg) => {
+    svg.querySelectorAll(`.wire-seg[data-seg="${seg}"]`).forEach((w) => {
+      w.classList.add(cls);
+      let p;
+      try {
+        p = w.getPointAtLength(w.getTotalLength() / 2);
+      } catch {
+        return; // 古いブラウザで polyline の長さが取れない場合は色付けのみ
+      }
+      const mark = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      mark.setAttribute("x", p.x);
+      mark.setAttribute("y", p.y + 8);
+      mark.setAttribute("text-anchor", "middle");
+      mark.setAttribute("font-size", "26");
+      mark.setAttribute("font-weight", "800");
+      mark.setAttribute("fill", color);
+      mark.setAttribute("stroke", "#fff");
+      mark.setAttribute("stroke-width", "4");
+      mark.setAttribute("paint-order", "stroke");
+      mark.setAttribute("class", "wire-x");
+      mark.textContent = "×";
+      w.parentNode.appendChild(mark);
+    });
+  });
+}
+
+/* ---------- アラーム概略図：コネクタに「×」を付ける ---------- */
+
+// アラームのコード文から、モジュール＋コネクタ（と分かればピン）を取り出す
+function portsForAlarm(a) {
+  if (!a) return [];
+  const code = String(a.code || "").toUpperCase().replace(/\s+/g, " ");
+  const out = [];
+  const add = (port, pin) => {
+    if (!out.some((x) => x.port === port)) out.push({ port, pin: pin || "" });
+  };
+
+  // CM-X1.13 / CMX1:13 / CM-X2.14-15 などの表記をまとめて拾う
+  const re = /CM[-\s]?X([123])[.:]?\s?([0-9]+(?:-[0-9]+)?)?/g;
+  let m;
+  while ((m = re.exec(code))) add(`CM-X${m[1]}`, m[2] ? `ピン ${m[2]}` : "");
+
+  // TM-X1 / TMX2-X10
+  if (/TM[-\s]?X2-X10|TM VALVES/.test(code)) {
+    for (let i = 2; i <= 10; i++) add(`TM-X${i}`, "");
+  }
+  const tre = /TM[-\s]?X([0-9]{1,2})/g;
+  while ((m = tre.exec(code))) add(`TM-X${m[1]}`, "");
+
+  // チルトローテータ／拡張モジュールとの通信は CM-X1 の CAN
+  if (/TILTROTATOR DISCONNECTED/.test(code)) add("CM-X1", "ピン 28-35（CAN）");
+  if (/EXPANSION/.test(code)) add("CM-X1", "ピン 28-35（CAN）");
+
+  return out;
+}
+
+// コネクタに × を付ける
+function markPorts(ports, type) {
+  const svg = document.getElementById("alarmmap-svg");
+  if (!svg) return;
+  svg.querySelectorAll(".amap-port").forEach((g) => g.classList.remove("is-short", "is-open", "is-other"));
+  svg.querySelectorAll(".amap-x").forEach((x) => x.remove());
+  if (!ports || !ports.length) return;
+
+  const cls = type === "short" ? "is-short" : type === "open" ? "is-open" : "is-other";
+  const color = type === "short" ? "#d33434" : type === "open" ? "#e08600" : "#555";
+  ports.forEach(({ port }) => {
+    const g = svg.querySelector(`.amap-port[data-port="${port}"]`);
+    if (!g) return;
+    g.classList.add(cls);
+    const r = g.querySelector("rect");
+    const cx = parseFloat(r.getAttribute("x")) + parseFloat(r.getAttribute("width")) / 2;
+    const cy = parseFloat(r.getAttribute("y")) + 13;
+    const mark = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    mark.setAttribute("x", cx);
+    mark.setAttribute("y", cy + 11);
+    mark.setAttribute("text-anchor", "middle");
+    mark.setAttribute("font-size", "30");
+    mark.setAttribute("font-weight", "800");
+    mark.setAttribute("fill", color);
+    mark.setAttribute("stroke", "#fff");
+    mark.setAttribute("stroke-width", "4");
+    mark.setAttribute("paint-order", "stroke");
+    mark.setAttribute("class", "amap-x");
+    mark.textContent = "×";
+    g.appendChild(mark);
+  });
+}
+
+// アラーム概略図ページの操作（キット切替＋エラー番号入力）
+function initAlarmMap(presetId) {
+  const form = document.getElementById("amap-form");
+  if (!form) return;
+  const input = document.getElementById("amap-input");
+  const result = document.getElementById("amap-result");
+  const svg = document.getElementById("alarmmap-svg");
+
+  // キット切替：選んだキットに含まれないモジュールを薄くする
+  const setKit = (kit) => {
+    svg.querySelectorAll(".amap-mod").forEach((g) => {
+      const k = g.dataset.kit;
+      g.classList.toggle("is-dim", kit !== "both" && k !== "both" && k !== kit);
+    });
+    document.querySelectorAll(".kit-btn").forEach((b) => b.classList.toggle("is-on", b.dataset.kit === kit));
+  };
+  document.querySelectorAll(".kit-btn").forEach((b) => {
+    b.addEventListener("click", () => setKit(b.dataset.kit));
+  });
+
+  const apply = (raw) => {
+    const q = normalize(raw);
+    if (!/^\d+$/.test(q)) {
+      result.innerHTML = `<span class="wire-err">数字のエラー番号（0〜172）を入力してください。</span>`;
+      markPorts([]);
+      return;
+    }
+    const a = ALARM_BY_ID.get(parseInt(q, 10));
+    if (!a) {
+      result.innerHTML = `<span class="wire-err">Id ${esc(q)} は存在しません。</span>`;
+      markPorts([]);
+      return;
+    }
+    const ports = portsForAlarm(a);
+    markPorts(ports, a.type);
+    result.innerHTML = ports.length
+      ? `<div class="wire-hit"><strong>Id ${a.id}｜${esc(a.title)}</strong>
+           <span class="badge type-${a.type}">${esc(TYPE_LABEL[a.type])}</span>
+           <div>該当コネクタ：${ports.map((p) => `<b>${esc(p.port)}</b>${p.pin ? `（${esc(p.pin)}）` : ""}`).join(" ／ ")}</div>
+           <div class="wire-code">${esc(a.code)}</div>
+           <button class="rel-chip" data-nav="#alarm/${a.id}">このアラームの詳細を見る</button></div>`
+      : `<span class="wire-err">Id ${a.id}（${esc(a.title)}）はコネクタが特定できないアラームです（安全状態・設定・モジュール内部など）。</span>`;
+    result.querySelectorAll(".rel-chip").forEach((el) => {
+      el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+    });
+  };
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); apply(input.value); });
+  document.getElementById("amap-clear").addEventListener("click", () => {
+    input.value = "";
+    result.innerHTML = "";
+    markPorts([]);
+  });
+
+  if (presetId != null) {
+    input.value = String(presetId);
+    apply(String(presetId));
+    document.getElementById("amap-tool").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+// 配線図ページの「エラー番号を入れて×を付ける」操作
+function initWireTool(presetId) {
+  const form = document.getElementById("wire-form");
+  if (!form) return;
+  const input = document.getElementById("wire-input");
+  const result = document.getElementById("wire-result");
+
+  const apply = (raw) => {
+    const q = normalize(raw);
+    if (!/^\d+$/.test(q)) {
+      result.innerHTML = `<span class="wire-err">数字のエラー番号（0〜172）を入力してください。</span>`;
+      markWires([]);
+      return;
+    }
+    const a = ALARM_BY_ID.get(parseInt(q, 10));
+    if (!a) {
+      result.innerHTML = `<span class="wire-err">Id ${esc(q)} は存在しません。</span>`;
+      markWires([]);
+      return;
+    }
+    const segs = wireSegsForAlarm(a);
+    markWires(segs, a.type);
+    const names = segs.map((s) => WIRE_SEG_LABEL[s]).filter(Boolean);
+    result.innerHTML = names.length
+      ? `<div class="wire-hit"><strong>Id ${a.id}｜${esc(a.title)}</strong>
+           <span class="badge type-${a.type}">${esc(TYPE_LABEL[a.type])}</span>
+           <div>該当する配線：${names.map((n) => `<b>${esc(n)}</b>`).join(" ／ ")}</div>
+           <div class="wire-code">${esc(a.code)}</div>
+           <button class="rel-chip" data-nav="#alarm/${a.id}">このアラームの詳細を見る</button></div>`
+      : `<span class="wire-err">Id ${a.id}（${esc(a.title)}）は、この簡略図の配線には対応していません（モジュール内部・設定などのアラームです）。</span>`;
+    result.querySelectorAll(".rel-chip").forEach((el) => {
+      el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+    });
+  };
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    apply(input.value);
+  });
+  document.getElementById("wire-clear").addEventListener("click", () => {
+    input.value = "";
+    result.innerHTML = "";
+    markWires([]);
+  });
+
+  if (presetId != null) {
+    input.value = String(presetId);
+    apply(String(presetId));
+    document.getElementById("wire-tool").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+function renderModulePage(page, presetAlarmId) {
   const groups = page.groups.map((g, gi) => `
     <div class="detail-section" id="mg-${page.id}-${gi}">
       <h2>${esc(g.heading)}</h2>
@@ -501,6 +750,9 @@ function renderModulePage(page) {
     if (history.length > 1) history.back();
     else location.hash = "#home";
   });
+
+  initWireTool(presetAlarmId);
+  initAlarmMap(presetAlarmId);
 
   // パネル図のホットスポット・凡例クリック → 該当セクションへスクロール
   $app.querySelectorAll("[data-jump]").forEach((el) => {
@@ -560,6 +812,15 @@ function renderDetail(a) {
   const related = (a.related || [])
     .map((id) => ALARM_BY_ID.get(id))
     .filter(Boolean);
+  const wireHtml = wireSegsForAlarm(a).length
+    ? `<div class="detail-section"><h2>配線図で位置を見る</h2>
+         <p class="mod-desc">このアラームが指す配線に「×」を付けた状態でシステム構成図を開きます。</p>
+         <div class="related-chips">
+           <button class="rel-chip" data-nav="#wire/${a.id}">🔌 配線図に×を付けて表示</button>
+           ${portsForAlarm(a).length ? `<button class="rel-chip" data-nav="#amap/${a.id}">📐 アラーム概略図でコネクタを見る</button>` : ""}
+         </div></div>`
+    : "";
+
   const relatedHtml = related.length
     ? `<div class="detail-section"><h2>関連アラーム</h2>
          <div class="related-chips">${related.map((r) => `
@@ -583,6 +844,7 @@ function renderDetail(a) {
       ${a.note ? `<div class="note-box">${esc(a.note)}</div>` : ""}
       ${causesHtml}
       ${stepsHtml}
+      ${wireHtml}
       ${relatedHtml}
     </div>
   `;
@@ -644,6 +906,22 @@ function route() {
   }
   if (hash.startsWith("#mod/")) {
     const page = MODULE_BY_ID.get(hash.slice(5));
+    if (page) { renderModulePage(page); return; }
+  }
+  // 配線図にそのアラームの「×」を付けた状態で開く
+  if (hash.startsWith("#wire/")) {
+    const id = parseInt(hash.slice(6), 10);
+    const page = MODULE_BY_ID.get("system");
+    if (page && ALARM_BY_ID.has(id)) { renderModulePage(page, id); return; }
+  }
+  // アラーム概略図に「×」を付けた状態で開く
+  if (hash.startsWith("#amap/")) {
+    const id = parseInt(hash.slice(6), 10);
+    const page = MODULE_BY_ID.get("alarm-map");
+    if (page && ALARM_BY_ID.has(id)) { renderModulePage(page, id); return; }
+  }
+  if (hash === "#amap") {
+    const page = MODULE_BY_ID.get("alarm-map");
     if (page) { renderModulePage(page); return; }
   }
   if (hash.startsWith("#display/")) {
