@@ -506,3 +506,78 @@ FIGURES.alarmmap = function () {
       <p class="qpm-note">アラーム表示は「アラーム名／モジュール／コネクタ／ピン／不具合」の順に読みます（例: <b>PWM1 CM X1 (1/2) SHORT CIRCUIT</b> ＝ PWM1 が CM のコネクタ X1 で短絡、2件中1件目）。</p>
     </div>`;
 };
+
+/* ================================================================
+ * MicroConf DC2 の IO 画面（信号とコネクタ・ピンの対応表）
+ * MicroConf DC2 5.4.0 の「IO」タブの並びを再現したもの。
+ * 各セルに data-pin（例: X1.1）を持たせ、アラーム番号から該当信号を光らせられる。
+ * ================================================================ */
+
+FIGURES.microconf = function () {
+  // sig(表示名, コネクタ.ピンの配列, 補足)
+  const sig = (name, pins, note) => `
+    <div class="io-sig" data-pin="${pins.join(" ")}">
+      <span class="io-name">${name}</span>
+      <span class="io-pin">${pins.map((p) => p.replace(".", ":")).join(" / ")}</span>
+      ${note ? `<span class="io-note">${note}</span>` : ""}
+    </div>`;
+
+  const box = (title, inner, cls) => `
+    <div class="io-box${cls ? " " + cls : ""}"><h3>${title}</h3><div class="io-grid">${inner}</div></div>`;
+
+  const joystick =
+    sig("LA1", ["X2.1", "X2.2"]) + sig("LA2", ["X2.3", "X2.4"]) + sig("LA3", ["X2.5", "X2.6"]) +
+    sig("RA1", ["X2.8", "X2.9"]) + sig("RA2", ["X2.10", "X2.11"]) + sig("RA3", ["X2.12", "X2.13"]) +
+    sig("LD1", ["X2.14", "X2.15"]) + sig("LD2", ["X2.16", "X2.17"]) + sig("LD3", ["X2.18"]) +
+    sig("RD1", ["X2.21", "X2.22"]) + sig("RD2", ["X2.23", "X2.24"]) + sig("RD3", ["X2.25"]);
+
+  const safety =
+    sig("CV1", ["X1.13"], "＝DO1") + sig("CV2", ["X1.15"], "＝DO2") +
+    sig("CVP1", ["X1.24"], "圧力SW") + sig("CVP2", ["X1.26"], "圧力SW");
+
+  const toollock = sig("TL_POS", ["X3.18"]) + sig("TL_NEG", ["X3.19"]);
+
+  const misc =
+    sig("DI13", ["X3.1"]) + sig("DI14", ["X3.2"]) + sig("DI15", ["X3.3"]) +
+    sig("DO3", ["X1.17"]) + sig("DO4", ["X1.19"]) + sig("DO5", ["X3.11"]) +
+    sig("DO6", ["X3.12"]) + sig("DO7", ["X3.13"]) +
+    sig("Vbat1", ["X1.23"], "電源") + sig("Vbat2", ["X1.21"], "電源");
+
+  const analog =
+    sig("PWM1", ["X1.1"], "フィーダー") + sig("PWM2", ["X1.3"], "フィーダー2") +
+    sig("PWM3-A", ["X1.5"]) + sig("PWM3-B", ["X1.7"]) +
+    sig("PWM4-A", ["X1.9"]) + sig("PWM4-B", ["X1.11"]) +
+    sig("PWM5", ["X3.9"], "エミュ") + sig("PWM6", ["X3.10"], "エミュ");
+
+  const tm =
+    sig("Rotation", ["TM.3", "TM.2"], "回転A／B") + sig("Tilt", ["TM.7", "TM.6"], "チルトA／B") +
+    sig("Extra 1", ["TM.5", "TM.4"]) + sig("Extra 2", ["TM.10", "TM.9"]) +
+    sig("Tool lock", ["TM.1"], "ヒッチロック");
+
+  return `
+    <div class="detail-section">
+      <h2>MicroConf「IO」画面の見かた（信号とピンの対応）</h2>
+      <p class="qpm-note">MicroConf DC2 の <b>IO</b> タブの並びを再現した対応表です。各信号の横がコネクタとピン番号（例: PWM1＝X1:1）で、アラーム文の「CM-X1.1」と同じ場所を指します。エラー番号を入れると、該当する信号が光ります。</p>
+      <div class="amap-tool" id="io-tool">
+        <form class="wire-form" id="io-form">
+          <label for="io-input">エラー番号を入れると、該当信号が光ります</label>
+          <div class="wire-row">
+            <input id="io-input" type="text" inputmode="numeric" pattern="[0-9０-９]*"
+                   placeholder="例: 82（LD1 ボタン短絡 X2:14-15）" autocomplete="off">
+            <button type="submit">光らせる</button>
+            <button type="button" id="io-clear">消す</button>
+          </div>
+        </form>
+        <div class="wire-result" id="io-result"></div>
+      </div>
+      <div class="io-board" id="io-board">
+        ${box("Joystick（ジョイスティック）", joystick)}
+        ${box("Safety related（CV／CVP）", safety)}
+        ${box("Tool lock（ツールロック）", toollock)}
+        ${box("Misc（DI／DO・電源）", misc)}
+        ${box("Analog out（PWM出力）", analog)}
+        ${box("Tiltrotator module（TMのバルブ出力）", tm)}
+      </div>
+      <p class="qpm-note">IO 画面では、上の各信号の値（V／mA）とON/OFFがリアルタイムで見られます。<b>CV1＝DO1（X1:13）</b>、<b>CV2＝DO2（X1:15）</b>で、アラーム上は「DO1／DO2」と表示されます。TM のバルブ番号はそのまま TM-X1〜X10 のコネクタ番号です（例: Rotation A＝バルブ3＝TM-X3）。</p>
+    </div>`;
+};
