@@ -211,6 +211,51 @@ const MODULE_PAGES = [
     ],
   },
   {
+    id: "microconf",
+    name: "MicroConf 画面の見かた（IO／Alarms／設定）",
+    icon: "🖥",
+    short: "PC ソフト MicroConf DC2 の各タブの読み方と、信号→コネクタ・ピンの対応表",
+    figure: "microconf",
+    intro: "PC ソフト MicroConf DC2（5.4.0）の画面の見かたです。左側のアイコンが設定のカテゴリ（ジョイスティック／チルトローテータ／マシン／ツール／リモコン／情報）で、情報（ⓘ）の中に「IO」と「Alarms」があります。IO 画面は各信号の実測値とコネクタ・ピンが一覧できるので、短絡・断線の切り分けに使えます。",
+    groups: [
+      {
+        heading: "情報（ⓘ）タブ",
+        entries: [
+          { badge: "IO", title: "入出力の実測値一覧", desc: "ジョイスティックの電圧（V）、PWM 出力の電流（mA）、DI／DO の ON/OFF、電源電圧（12V／24V）、CAN バスの状態、チルトローテータモジュールの出力、モジュール接続状況（TM／EM／QCM／QLM／AGW／C2C／ROT SENS／TILT SENS）、CM と TM のソフトウェアバージョンが見られます。", action: "アラームが出た信号を IO 画面で見れば、値が出ているか（断線なら 0、短絡なら異常値）をその場で確認できます。上の対応表で信号とピンの位置を確認してください。" },
+          { badge: "Alarms", title: "アラーム一覧（Id つき）", desc: "列は Id（0〜172）／Active alarm（現在発生中のチェック）／Description（英語のアラーム文）／Count（発生回数）／First Occurrence（初回）／Latest Occurrence（最新）です。行を選ぶと下に説明が出ます。", action: "「Clear alarms」で履歴を消去、「Show Safe state alarms」でセーフステートの一覧を表示します。Id をこのアプリの検索に入れると日本語の対処手順が出ます。" },
+          { badge: "Module connection", title: "モジュールの接続状況", desc: "TM・EM・QCM・QLM・AGW・C2C・ROT SENS・TILT SENS の接続ランプです。", action: "ここが点いていないモジュールは通信できていません。TILTROTATOR DISCONNECTED（Id 92）や EXPANSION MODULE DISCONNECTED（Id 133）と合わせて確認します。" },
+          { badge: "CAN bus", title: "CAN バス診断", desc: "Bus status（赤＝異常）、Total error frames、Bus load（%）が見られます。", action: "Bus load が高い場合は Id 170（HIGH BUS LOAD）も確認してください。" },
+        ],
+      },
+      {
+        heading: "ジョイスティック設定（Calibration／Input mapping）",
+        entries: [
+          { badge: "Calibration", title: "ジョイスティックの較正", desc: "LA1〜LA3／RA1〜RA3 それぞれの最小電圧・中央電圧・最大電圧（V）と Deadband（中立の不感帯、既定 40）を設定します。中央が約 2.5V、両端が約 0.6V／4.4V が目安です。", action: "「Calibrate」で較正を実行します。BELOW MIN／ABOVE MAX や START:OUTSIDE DB のアラームはここの較正で直ることが多いです。" },
+          { badge: "Input mapping", title: "レバー・ボタンへの機能割り当て", desc: "User 1〜3／Shear ごとに、ローラ（LA1〜3・RA1〜3）とボタン（LD1〜3・RD1〜3）へ機能を割り当てます。Inv. にチェックを入れると動作方向が反転します。使わない入力は Not used にします。", action: "例: LA1＝Rotation、RA1＝Tilt、LD1＝Shift RA1＋Extra 1。ECR145E＋EC219 では LD1＝QSC、RD1＝PWM5B を割り当てます。LD3 は「Tool lock／Menu login」に固定です。" },
+          { badge: "Not used", title: "存在しない入力のアラーム", desc: "ローラが1〜2個しかないのに LA3／RA3 に機能が割り当てられていると、存在しない入力のアラームが出ます。", action: "使っていない入力は Not used にしてください。" },
+        ],
+      },
+      {
+        heading: "チルトローテータ設定（Tiltrotator settings）",
+        entries: [
+          { badge: "Tilt－rotation", title: "回転・チルトの電流設定", desc: "Rotation A／B、Tilt A／B ごとに、Feeder－mA（既定 Min 600／Max 1100）と Tiltrotator－mA（既定 Min 600／Max 1700）を設定します。A／B は動作方向です。", action: "Min＝動き出す電流、Max＝全開の電流です。動きが遅い・鈍いときはここを調整します。中央のボタンで A と B の値を連動できます。" },
+          { badge: "Extra 1－2", title: "エクストラ機能の電流設定", desc: "Extra 1／Extra 2（グラップルなど）の電流設定です。", action: "" },
+          { badge: "ramp", title: "ランプ（立ち上がり）設定", desc: "「Tilt－rotation ramp」「Extra 1－2 ramp」で、動作の立ち上がり・立ち下がりの時間を調整します。", action: "動きが唐突・カクつく場合に調整します。" },
+          { badge: "Feeder", title: "フィーダー設定", desc: "画面下部の Feeder max（既定 2000mA）や、Feeder／Rotation／Tilt／Extra の現在値（mA）が表示されます。", action: "" },
+        ],
+      },
+      {
+        heading: "画面上部の共通表示",
+        entries: [
+          { badge: "Connect", title: "接続状態", desc: "「Disconnected／Connected」と接続ボタンです。USB または Bluetooth で CM に接続します。", action: "PC を接続している間は、CM 本体のメニュー操作はできません（仕様）。" },
+          { badge: "alarms", title: "アラーム件数", desc: "現在のアラーム件数（例: 173 alarms）が表示されます。", action: "クリックすると Alarms タブに移動します。" },
+          { badge: "User 1", title: "使用中のユーザープロファイル", desc: "Input mapping などの設定はユーザーごとに保存されます。", action: "操作が思ったとおりでない場合、別ユーザーの設定になっていないか確認してください。" },
+          { badge: "Save", title: "設定の保存", desc: "変更した設定を CM に書き込みます。", action: "保存後、システムの再起動が必要な項目があります（PWM5 の有効化など）。" },
+        ],
+      },
+    ],
+  },
+  {
     id: "alarm-map",
     name: "アラーム概略図（キット別）",
     icon: "📐",

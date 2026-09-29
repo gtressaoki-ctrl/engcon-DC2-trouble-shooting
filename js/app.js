@@ -537,6 +537,92 @@ function markWires(segs, type) {
   });
 }
 
+/* ---------- MicroConf IO 画面：該当信号を光らせる ---------- */
+
+// アラームのコード文から「X1.1」「X2.14」「TM.3」などのピン表記を取り出す
+function pinTokensForAlarm(a) {
+  if (!a) return [];
+  const code = String(a.code || "").toUpperCase().replace(/\s+/g, " ");
+  const out = [];
+  const push = (t) => { if (!out.includes(t)) out.push(t); };
+
+  // CM-X1.13 / CMX2:14-15 など
+  const re = /CM[-\s]?X([123])[.:]\s?(\d+)(?:-(\d+))?/g;
+  let m;
+  while ((m = re.exec(code))) {
+    const from = parseInt(m[2], 10);
+    const to = m[3] ? parseInt(m[3], 10) : from;
+    for (let i = from; i <= to && i - from < 12; i++) push(`X${m[1]}.${i}`);
+  }
+  // TM-X3 など（TM のバルブ出力）
+  if (/TM VALVES|TM[-\s]?X2-X10/.test(code)) {
+    for (let i = 2; i <= 10; i++) push(`TM.${i}`);
+  }
+  const tre = /TM[-\s]?X(\d{1,2})/g;
+  while ((m = tre.exec(code))) push(`TM.${m[1]}`);
+  return out;
+}
+
+// IO 画面の該当信号を光らせる
+function markIoSignals(tokens, type) {
+  const board = document.getElementById("io-board");
+  if (!board) return;
+  board.querySelectorAll(".io-sig").forEach((el) => el.classList.remove("is-short", "is-open", "is-other"));
+  if (!tokens || !tokens.length) return;
+  const cls = type === "short" ? "is-short" : type === "open" ? "is-open" : "is-other";
+  board.querySelectorAll(".io-sig").forEach((el) => {
+    const pins = (el.dataset.pin || "").split(/\s+/);
+    if (pins.some((p) => tokens.includes(p))) el.classList.add(cls);
+  });
+}
+
+function initIoBoard(presetId) {
+  const form = document.getElementById("io-form");
+  if (!form) return;
+  const input = document.getElementById("io-input");
+  const result = document.getElementById("io-result");
+
+  const apply = (raw) => {
+    const q = normalize(raw);
+    if (!/^\d+$/.test(q)) {
+      result.innerHTML = `<span class="wire-err">数字のエラー番号（0〜172）を入力してください。</span>`;
+      markIoSignals([]);
+      return;
+    }
+    const a = ALARM_BY_ID.get(parseInt(q, 10));
+    if (!a) {
+      result.innerHTML = `<span class="wire-err">Id ${esc(q)} は存在しません。</span>`;
+      markIoSignals([]);
+      return;
+    }
+    const tokens = pinTokensForAlarm(a);
+    markIoSignals(tokens, a.type);
+    const hit = document.querySelectorAll("#io-board .io-sig.is-short, #io-board .io-sig.is-open, #io-board .io-sig.is-other").length;
+    result.innerHTML = hit
+      ? `<div class="wire-hit"><strong>Id ${a.id}｜${esc(a.title)}</strong>
+           <span class="badge type-${a.type}">${esc(TYPE_LABEL[a.type])}</span>
+           <div>該当ピン：${tokens.map((t) => `<b>${esc(t.replace(".", ":"))}</b>`).join(" ／ ")}</div>
+           <div class="wire-code">${esc(a.code)}</div>
+           <button class="rel-chip" data-nav="#alarm/${a.id}">このアラームの詳細を見る</button></div>`
+      : `<span class="wire-err">Id ${a.id}（${esc(a.title)}）は IO 画面の信号に対応していません（安全状態・設定・通信・モジュール内部など）。</span>`;
+    result.querySelectorAll(".rel-chip").forEach((el) => {
+      el.addEventListener("click", () => { location.hash = el.dataset.nav; });
+    });
+  };
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); apply(input.value); });
+  document.getElementById("io-clear").addEventListener("click", () => {
+    input.value = "";
+    result.innerHTML = "";
+    markIoSignals([]);
+  });
+  if (presetId != null) {
+    input.value = String(presetId);
+    apply(String(presetId));
+    document.getElementById("io-tool").scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
 /* ---------- アラーム概略図：コネクタに「×」を付ける ---------- */
 
 // アラームのコード文から、モジュール＋コネクタ（と分かればピン）を取り出す
@@ -774,6 +860,7 @@ function renderModulePage(page, presetAlarmId) {
 
   initWireTool(presetAlarmId);
   initAlarmMap(presetAlarmId);
+  initIoBoard(presetAlarmId);
 
   // パネル図のホットスポット・凡例クリック → 該当セクションへスクロール
   $app.querySelectorAll("[data-jump]").forEach((el) => {
@@ -839,6 +926,7 @@ function renderDetail(a) {
          <div class="related-chips">
            <button class="rel-chip" data-nav="#wire/${a.id}">🔌 配線図に×を付けて表示</button>
            ${portsForAlarm(a).length ? `<button class="rel-chip" data-nav="#amap/${a.id}">📐 アラーム概略図でコネクタを見る</button>` : ""}
+           ${pinTokensForAlarm(a).length ? `<button class="rel-chip" data-nav="#io/${a.id}">🖥 MicroConf の IO 画面で見る</button>` : ""}
          </div></div>`
     : "";
 
@@ -939,6 +1027,12 @@ function route() {
   if (hash.startsWith("#amap/")) {
     const id = parseInt(hash.slice(6), 10);
     const page = MODULE_BY_ID.get("alarm-map");
+    if (page && ALARM_BY_ID.has(id)) { renderModulePage(page, id); return; }
+  }
+  // MicroConf IO 画面で該当信号を光らせた状態で開く
+  if (hash.startsWith("#io/")) {
+    const id = parseInt(hash.slice(4), 10);
+    const page = MODULE_BY_ID.get("microconf");
     if (page && ALARM_BY_ID.has(id)) { renderModulePage(page, id); return; }
   }
   if (hash === "#amap") {
