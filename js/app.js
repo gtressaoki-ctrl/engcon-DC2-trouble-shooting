@@ -608,24 +608,38 @@ function initAlarmMap(presetId) {
   const result = document.getElementById("amap-result");
   const svg = document.getElementById("alarmmap-svg");
 
-  // キット切替：選んだキットに含まれないモジュールを薄くし、キット固有のメモを出す
+  // キット選択：ベースキット（8001080／8002535 の排他）＋ EXT DC2（なし／8002200／8002201）
   const note = document.getElementById("amap-kitnote");
-  const setKit = (kitId) => {
-    const kit = ALARM_MAP_KITS.find((k) => k.id === kitId) || ALARM_MAP_KITS[0];
+  let baseKit = ALARM_MAP_BASE_KITS[0].id;
+  let extKit = ALARM_MAP_EXT_KITS[0].id;
+
+  const render = () => {
+    const base = ALARM_MAP_BASE_KITS.find((k) => k.id === baseKit);
+    const ext = ALARM_MAP_EXT_KITS.find((k) => k.id === extKit);
     svg.querySelectorAll(".amap-mod").forEach((g) => {
       const k = g.dataset.kit;
-      const shown = kit.id === "all" || k === "common" || k === kit.fam || k === kit.id;
+      let shown;
+      if (k === "common" || k === "qsc") shown = true;          // CM・TM と QSC はベース共通
+      else if (k === "ext") shown = ext.id !== "none";           // EM は EXT DC2 を選んだときだけ
+      else shown = k === base.id;                                // キット番号指定（リレーボックス等）
       g.classList.toggle("is-dim", !shown);
     });
-    document.querySelectorAll(".kit-btn").forEach((b) => b.classList.toggle("is-on", b.dataset.kit === kit.id));
-    note.innerHTML = kit.doc
-      ? `<strong>${esc(kit.id)}</strong>（取付説明書 ${esc(kit.doc)}）：${esc(kit.note)}`
-      : esc(kit.note);
+    document.querySelectorAll("[data-base]").forEach((b) => b.classList.toggle("is-on", b.dataset.base === base.id));
+    document.querySelectorAll("[data-ext]").forEach((b) => b.classList.toggle("is-on", b.dataset.ext === ext.id));
+    note.innerHTML =
+      `<div><strong>${esc(base.id)}</strong>（取付説明書 ${esc(base.doc)}）：${esc(base.note)}</div>` +
+      (ext.doc
+        ? `<div style="margin-top:6px"><strong>＋ ${esc(ext.id)}</strong>（取付説明書 ${esc(ext.doc)}）：${esc(ext.note)}</div>`
+        : `<div style="margin-top:6px">${esc(ext.note)}</div>`);
   };
-  document.querySelectorAll(".kit-btn").forEach((b) => {
-    b.addEventListener("click", () => setKit(b.dataset.kit));
+
+  document.querySelectorAll("[data-base]").forEach((b) => {
+    b.addEventListener("click", () => { baseKit = b.dataset.base; render(); });
   });
-  setKit("all");
+  document.querySelectorAll("[data-ext]").forEach((b) => {
+    b.addEventListener("click", () => { extKit = b.dataset.ext; render(); });
+  });
+  render();
 
   const apply = (raw) => {
     const q = normalize(raw);
